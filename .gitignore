@@ -1,0 +1,5 @@
+# Ignorar carpeta de datos pesados
+data/raw/
+*.edf
+*.fif
+*.bdf
