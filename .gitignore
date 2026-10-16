@@ -3,3 +3,6 @@ data/raw/
 *.edf
 *.fif
 *.bdf
+*.set
+*.fdt
+*.tsv
