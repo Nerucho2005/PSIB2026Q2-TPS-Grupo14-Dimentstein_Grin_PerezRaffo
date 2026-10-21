@@ -3,7 +3,7 @@
 #
 # Limitaciones del filtrado de fase cero (sosfiltfilt):
 # - Es no causal: el artefacto de estimulación y las ondas rápidas generan oscilaciones
-#   *previas* al estímulo (pre-ringing), que pueden contaminar una línea de base posterior.
+#   previas al estímulo (pre-ringing), que pueden contaminar una línea de base posterior.
 # - Se filtra hacia adelante y atrás: la atenuación en las frecuencias de corte es el doble
 #   (-6 dB en lugar de -3 dB) y el orden efectivo se duplica.
 # - Los extremos del registro conservan un transitorio residual aunque se use extensión impar
