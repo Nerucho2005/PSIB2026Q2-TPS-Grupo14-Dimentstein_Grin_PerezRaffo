@@ -6,3 +6,4 @@ data/raw/
 *.set
 *.fdt
 *.tsv
+*.json
