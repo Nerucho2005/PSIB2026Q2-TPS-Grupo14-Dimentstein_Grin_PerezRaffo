@@ -1,0 +1,369 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1200</width>
+    <height>750</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Análisis de SEP</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="layoutCentral">
+    <item>
+     <layout class="QHBoxLayout" name="layoutSuperior">
+      <item>
+       <widget class="QWidget" name="panelControles" native="true">
+        <property name="maximumSize">
+         <size>
+          <width>320</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <layout class="QVBoxLayout" name="layoutPanel">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QGroupBox" name="grupoCarga">
+           <property name="title">
+            <string>1. Carga de datos</string>
+           </property>
+           <layout class="QFormLayout" name="formCarga">
+            <item row="0" column="0" colspan="2">
+             <widget class="QPushButton" name="btnAbrir">
+              <property name="text">
+               <string>Abrir archivo...</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="labelArchivo">
+              <property name="text">
+               <string>Archivo</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QLabel" name="lblArchivo">
+              <property name="text">
+               <string>(ninguno)</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QLabel" name="labelFs">
+              <property name="text">
+               <string>Fs (Hz)</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="QDoubleSpinBox" name="spinFs">
+              <property name="suffix">
+               <string> Hz</string>
+              </property>
+              <property name="decimals">
+               <number>1</number>
+              </property>
+              <property name="minimum">
+               <double>1.000000000000000</double>
+              </property>
+              <property name="maximum">
+               <double>100000.000000000000000</double>
+              </property>
+              <property name="value">
+               <double>5000.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0">
+             <widget class="QLabel" name="labelCanal">
+              <property name="text">
+               <string>Canal</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1">
+             <widget class="QComboBox" name="comboCanal"/>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="grupoFiltro">
+           <property name="title">
+            <string>2. Filtrado</string>
+           </property>
+           <layout class="QVBoxLayout" name="layoutFiltro">
+            <item>
+             <widget class="QPushButton" name="btnFiltrar">
+              <property name="text">
+               <string>Aplicar filtro</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="grupoEpocas">
+           <property name="title">
+            <string>3. Épocas y promediado</string>
+           </property>
+           <layout class="QVBoxLayout" name="layoutEpocas">
+            <item>
+             <widget class="QPushButton" name="btnPromediar">
+              <property name="text">
+               <string>Promediar</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="grupoResultados">
+           <property name="title">
+            <string>4. Resultados</string>
+           </property>
+           <layout class="QVBoxLayout" name="layoutResultados">
+            <item>
+             <widget class="QPushButton" name="btnMetricas">
+              <property name="text">
+               <string>Calcular métricas</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="btnExportar">
+              <property name="text">
+               <string>Exportar CSV</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <spacer name="spacerPanel">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QTabWidget" name="tabsGraficos">
+        <property name="currentIndex">
+         <number>0</number>
+        </property>
+        <widget class="QWidget" name="tabCruda">
+         <attribute name="title">
+          <string>Señal cruda</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="layoutTabCruda">
+          <item>
+           <widget class="PlotWidget" name="graficoCrudo" native="true"/>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tabPromedio">
+         <attribute name="title">
+          <string>Filtrada / Promedio</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="layoutTabPromedio">
+          <item>
+           <widget class="PlotWidget" name="graficoPromedio" native="true"/>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tabPSD">
+         <attribute name="title">
+          <string>Espectro (PSD)</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="layoutTabPSD">
+          <item>
+           <widget class="PlotWidget" name="graficoPSD" native="true"/>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tabMetricas">
+         <attribute name="title">
+          <string>Métricas</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="layoutTabMetricas">
+          <item>
+           <widget class="QTableWidget" name="tablaMetricas">
+            <property name="editTriggers">
+             <set>QAbstractItemView::NoEditTriggers</set>
+            </property>
+            <attribute name="horizontalHeaderStretchLastSection">
+             <bool>true</bool>
+            </attribute>
+            <row/>
+            <row/>
+            <row/>
+            <row/>
+            <column>
+             <property name="text">
+              <string>Componente</string>
+             </property>
+            </column>
+            <column>
+             <property name="text">
+              <string>Latencia (ms)</string>
+             </property>
+            </column>
+            <column>
+             <property name="text">
+              <string>Amplitud (µV)</string>
+             </property>
+            </column>
+            <item row="0" column="0">
+             <property name="text">
+              <string>N9</string>
+             </property>
+            </item>
+            <item row="1" column="0">
+             <property name="text">
+              <string>N13</string>
+             </property>
+            </item>
+            <item row="2" column="0">
+             <property name="text">
+              <string>N20</string>
+             </property>
+            </item>
+            <item row="3" column="0">
+             <property name="text">
+              <string>P25</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QPlainTextEdit" name="txtLog">
+      <property name="maximumSize">
+       <size>
+        <width>16777215</width>
+        <height>100</height>
+       </size>
+      </property>
+      <property name="readOnly">
+       <bool>true</bool>
+      </property>
+      <property name="placeholderText">
+       <string>Registro de eventos...</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QProgressBar" name="barraProgreso">
+      <property name="value">
+       <number>0</number>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1200</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuArchivo">
+    <property name="title">
+     <string>Archivo</string>
+    </property>
+    <addaction name="actionAbrir"/>
+    <addaction name="actionExportar"/>
+    <addaction name="separator"/>
+    <addaction name="actionSalir"/>
+   </widget>
+   <widget class="QMenu" name="menuAyuda">
+    <property name="title">
+     <string>Ayuda</string>
+    </property>
+    <addaction name="actionAcercaDe"/>
+   </widget>
+   <addaction name="menuArchivo"/>
+   <addaction name="menuAyuda"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionAbrir">
+   <property name="text">
+    <string>Abrir...</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
+  </action>
+  <action name="actionExportar">
+   <property name="text">
+    <string>Exportar CSV</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+E</string>
+   </property>
+  </action>
+  <action name="actionSalir">
+   <property name="text">
+    <string>Salir</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
+   </property>
+  </action>
+  <action name="actionAcercaDe">
+   <property name="text">
+    <string>Acerca de</string>
+   </property>
+  </action>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>PlotWidget</class>
+   <extends>QWidget</extends>
+   <header>pyqtgraph</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>
