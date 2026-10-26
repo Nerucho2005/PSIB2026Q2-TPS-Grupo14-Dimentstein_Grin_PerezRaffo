@@ -7,7 +7,7 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent      # raíz del repo (config.py está en TPS/)
 DIR_DATOS = RAIZ / "EEG-Paciente1"                 # datos, fuera de git
 DIR_RESULTADOS = RAIZ / "results"                  # figuras
-NERVIO = "tibial"                                  # "tibial" o "mediano"
+NERVIO = "mediano"                                  # "tibial" o "mediano"
 SUJETO = "001"
 RUN = {"tibial": "02", "mediano": "03"}[NERVIO]    # run a analizar de cada nervio
 TAREA = {"tibial": "tibial", "mediano": "median"}[NERVIO]
