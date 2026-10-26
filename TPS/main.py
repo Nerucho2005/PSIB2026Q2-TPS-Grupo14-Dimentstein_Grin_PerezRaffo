@@ -8,11 +8,13 @@ import logging
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 import config as cfg
 from filtrado import preprocesar_eeg
 from segmentacion import cargar_eventos, segmentar_epocas
 from snr import METODOS, curva_snr, snr_teorica_homogeneo, snr_todos_los_metodos
+from teoria import comparar_con_teoria, tabla_metodos
 
 
 def main():
@@ -40,7 +42,20 @@ def main():
     for met in METODOS:
         print(f"{met:>10} " + " ".join(f"{v:8.2f}" for v in r[met]["snr_db"]))
 
-    # Curvas SNR vs. N
+    # 5. Latencias y amplitudes vs. referencia
+    with pd.option_context("display.width", 140, "display.max_columns", 20):
+        tabla = comparar_con_teoria(tiempos, r["homogeneo"]["pe"], res.canales,
+                                    cfg.NERVIO)
+        print("\nComponentes del PEP (promedio homogéneo)")
+        print(tabla.round(2).to_string(index=False))
+        tm = tabla_metodos(tiempos, {met: r[met]["pe"] for met in METODOS}, res.canales,
+                           cfg.NERVIO)
+        print("\nComponentes según método de promediado")
+        print(tm.to_string())
+    tabla.to_csv(cfg.DIR_RESULTADOS / f"componentes_{cfg.NERVIO}_homogeneo.csv", index=False)
+    tm.to_csv(cfg.DIR_RESULTADOS / f"componentes_{cfg.NERVIO}_por_metodo.csv")
+
+    # 6. Curvas SNR vs. N
     n_valores = sorted({n for n in cfg.N_VALORES if n < M} | {M})
     curvas = {met: curva_snr(epocas, tiempos, n_valores, met, n_rep=cfg.N_REP,
                              ventana_senal=cfg.VENTANA_SENAL, tam_bloque=cfg.TAM_BLOQUE)
@@ -55,7 +70,7 @@ def main():
             ax1.plot(t_ms, r[met]["pe"][i] * 1e6, lw=1, label=met)
         ax1.axvspan(*(np.array(cfg.VENTANA_SENAL) * 1e3), color="0.9", zorder=0)
         ax1.axvline(0, color="k", lw=0.5)
-        ax1.set(xlabel="Tiempo (ms)", ylabel="Amplitud (µV)", title=f"PEP tibial — {canal}")
+        ax1.set(xlabel="Tiempo (ms)", ylabel="Amplitud (µV)", title=f"PEP {cfg.NERVIO} — {canal}")
         ax1.legend()
 
         for met in METODOS:
@@ -69,7 +84,7 @@ def main():
         ax2.legend()
 
         fig.tight_layout()
-        fig.savefig(cfg.DIR_RESULTADOS / f"pep_snr_{canal}.png", dpi=150)
+        fig.savefig(cfg.DIR_RESULTADOS / f"pep_snr_{cfg.NERVIO}_{canal}.png", dpi=150)
     plt.show()
 
 

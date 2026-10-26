@@ -67,6 +67,7 @@ def amplitudes(epocas, tiempos, ventana_senal, tam_bloque=50):
     xbar = suma_bloque / n_por_bloque[:, None, None]
     r = (x.sum(axis=0) - suma_bloque) / (M - n_por_bloque)[:, None, None]
     a_b = (xbar * r).sum(axis=-1) / (r * r).sum(axis=-1)
+    a_b = np.clip(a_b, 0, None)   # el PEP no invierte polaridad: a_b < 0 es ruido
 
     a = a_b[bloque]
     media = a.mean(axis=0, keepdims=True)

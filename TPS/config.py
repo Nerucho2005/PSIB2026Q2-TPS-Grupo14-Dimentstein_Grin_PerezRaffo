@@ -7,12 +7,18 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent      # raíz del repo (config.py está en TPS/)
 DIR_DATOS = RAIZ / "EEG-Paciente1"                 # datos, fuera de git
 DIR_RESULTADOS = RAIZ / "results"                  # figuras
-BASE = "sub-001_task-tibial_run-02"                # prefijo BIDS del run
+NERVIO = "tibial"                                  # "tibial" o "mediano"
+SUJETO = "001"
+RUN = {"tibial": "02", "mediano": "03"}[NERVIO]    # run a analizar de cada nervio
+TAREA = {"tibial": "tibial", "mediano": "median"}[NERVIO]
+BASE = f"sub-{SUJETO}_task-{TAREA}_run-{RUN}"      # prefijo BIDS del run
 ARCHIVO_EEG = DIR_DATOS / f"{BASE}_eeg.set"        # el .fdt debe estar al lado
 ARCHIVO_EVENTOS = DIR_DATOS / f"{BASE}_events.tsv"
 
-# ---- Canales ----
-CANALES = ["Cz", "CPz"]
+# ---- Canales (referencia de adquisición: mastoides derecha, RM) ----
+# Mediano: CP3/CP4 ~ C3'/C4'. El N20 aparece solo en el CONTRALATERAL al brazo
+# estimulado; se dejan los dos para identificar el lado.
+CANALES = {"tibial": ["Cz", "CPz"], "mediano": ["CP3", "CP4"]}[NERVIO]
 
 # ---- Artefacto de estimulación (se interpola ANTES de filtrar) ----
 INTERPOLAR_ARTEFACTO = True
@@ -26,11 +32,12 @@ F_NOTCH = 50.0    # Hz (None desactiva el notch)
 Q_NOTCH = 30.0
 
 # ---- Segmentación ----
-TMIN = -0.020     # s, inicio de la época respecto del estímulo
-TMAX = 0.120      # s, fin de la época
+TMIN = -0.020                                          # s, inicio de la época
+TMAX = {"tibial": 0.120, "mediano": 0.080}[NERVIO]     # s, fin de la época
 
 # ---- Promedios y SNR ----
-VENTANA_SENAL = (0.015, 0.080)   # s, donde está el PEP (P37/P40, N45)
+VENTANA_SENAL = {"tibial": (0.015, 0.080),     # s, donde está el PEP: P40...N75
+                 "mediano": (0.012, 0.060)}[NERVIO]   # N20...P45
 TAM_BLOQUE = 50                  # épocas por bloque para estimar amplitudes
 N_VALORES = [10, 25, 50, 100, 200, 400]   # N para la curva SNR vs. N (M se agrega solo)
 N_REP = 20                       # repeticiones por N en la curva
