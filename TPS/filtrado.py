@@ -10,6 +10,12 @@
 #   (padlen); conviene no analizar épocas pegadas al inicio/fin del registro.
 # - Si el registro tiene discontinuidades (eventos 'boundary' de EEGLAB), el filtro las atraviesa.
 #
+# Artefacto de estimulación: el pulso del estimulador (0,2 ms) llega al cuero
+# cabelludo por conducción de volumen. En este registro dura ~1,5 ms y mide
+# ~70-85 µV en el promedio. Se reemplaza por una recta entre -1 y +3 ms de cada
+# estímulo (interpolar_artefacto) ANTES de filtrar, para que el filtro de fase
+# cero no lo disperse hacia la línea de base ni hacia la ventana del PEP.
+#
 # Sobre el corte inferior de 5 Hz: en el PESS tibial el componente cortical principal (P37)
 # dura ~10-20 ms, por lo que su energía se concentra por encima de ~15-20 Hz y un pasaaltos de
 # 5 Hz lo preserva. Pero puede recortar componentes lentos posteriores (N45 y ondas tardías);
@@ -77,6 +83,29 @@ def seleccionar_canales(raw, canales):
     return raw.copy().pick(encontrados)
 
 
+def interpolar_artefacto(datos, muestras_estimulo, fs, t_ini=-0.001, t_fin=0.003):
+    """Reemplaza el artefacto de estimulación por una recta.
+    Para cada estímulo, une con una recta la muestra en t_ini y la muestra en
+    t_fin (relativos al estímulo, en s); las muestras intermedias se descartan.
+    datos: (n_canales, n_muestras) | muestras_estimulo: índices de muestra.
+    Devuelve una copia; se omiten estímulos cuya ventana se sale del registro."""
+    if not t_ini < t_fin:
+        raise ValueError(f"Se requiere t_ini < t_fin ({t_ini}, {t_fin}).")
+    datos = np.array(datos, dtype=float, copy=True)
+    i_ini, i_fin = int(round(t_ini * fs)), int(round(t_fin * fs))
+    frac = np.linspace(0.0, 1.0, i_fin - i_ini + 1)          # 0 en n_a, 1 en n_b
+    n_omitidos = 0
+    for m in np.asarray(muestras_estimulo, dtype=int):
+        a, b = m + i_ini, m + i_fin
+        if a < 0 or b >= datos.shape[1]:
+            n_omitidos += 1
+            continue
+        datos[:, a:b + 1] = datos[:, [a]] + (datos[:, [b]] - datos[:, [a]]) * frac
+    if n_omitidos:
+        warnings.warn(f"{n_omitidos} estímulos sin interpolar: su ventana se sale del registro.")
+    return datos
+
+
 def _disenar_filtros(fs, f_bajo, f_alto, orden, f_notch, q_notch):
     nyq = fs / 2
     if not 0 < f_bajo < f_alto < nyq:
@@ -116,10 +145,14 @@ def graficar_comparacion(crudo, filtrado, inicio_s=0.0, duracion_s=5.0):
 
 
 def preprocesar_eeg(registro="EEG-Paciente1", canales=None, f_bajo=5.0, f_alto=100.0, orden=4,
-                    f_notch=50.0, q_notch=30.0, graficar=False, ventana_grafico=(0.0, 5.0)):
-    # Selecciona canales y filtra el EEG continuo (bandpass Butterworth + notch, fase cero).
+                    f_notch=50.0, q_notch=30.0, graficar=False, ventana_grafico=(0.0, 5.0),
+                    muestras_estimulo=None, t_artefacto=(-0.001, 0.003)):
+    # Selecciona canales, interpola el artefacto de estímulo y filtra el EEG continuo
+    # (bandpass Butterworth + notch, fase cero).
     # registro: carpeta (se usa ARCHIVO_POR_DEFECTO), ruta a un .set, o un mne.io.Raw ya cargado.
     # f_notch=None desactiva el notch.
+    # muestras_estimulo: índices de muestra de los estímulos; None no interpola.
+    # t_artefacto: (t_ini, t_fin) en s respecto de cada estímulo.
     raw = registro if isinstance(registro, mne.io.BaseRaw) else cargar_eeg(registro)
     _informar(raw)
     if any("boundary" in d.lower() for d in raw.annotations.description):
@@ -128,6 +161,12 @@ def preprocesar_eeg(registro="EEG-Paciente1", canales=None, f_bajo=5.0, f_alto=1
     seleccion = seleccionar_canales(raw, canales or CANALES_POR_DEFECTO)
     seleccion.load_data()  # solo ahora se leen los datos, y solo de los canales elegidos
     fs = seleccion.info["sfreq"]
+    if muestras_estimulo is not None:
+        seleccion.apply_function(
+            lambda x: interpolar_artefacto(x, muestras_estimulo, fs, *t_artefacto),
+            channel_wise=False, verbose="ERROR")
+        log.info("Artefacto interpolado en %d estímulos, de %.1f a %.1f ms.",
+                 len(muestras_estimulo), t_artefacto[0] * 1e3, t_artefacto[1] * 1e3)
     amp = np.median(np.abs(seleccion.get_data()), axis=1) * 1e6
     log.info("Amplitud mediana |x| (µV; MNE trabaja internamente en V): %s",
              dict(zip(seleccion.ch_names, np.round(amp, 1))))
@@ -147,7 +186,8 @@ def preprocesar_eeg(registro="EEG-Paciente1", canales=None, f_bajo=5.0, f_alto=1
         eventos, event_id = np.empty((0, 3), dtype=int), {}
 
     parametros = dict(f_bajo=f_bajo, f_alto=f_alto, orden=orden, f_notch=f_notch,
-                      q_notch=q_notch, padlen=padlen)
+                      q_notch=q_notch, padlen=padlen,
+                      t_artefacto=None if muestras_estimulo is None else t_artefacto)
     return ResultadoPreprocesamiento(filtrado, fs, filtrado.ch_names, eventos, event_id, parametros)
 
 

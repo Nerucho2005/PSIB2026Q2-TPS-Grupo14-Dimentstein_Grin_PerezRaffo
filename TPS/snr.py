@@ -120,7 +120,12 @@ def snr_todos_los_metodos(epocas, tiempos, ventana_senal=VENTANA_SENAL, tam_bloq
     Devuelve {metodo: {"pe", "pesos", "snr_db", "p_senal", "p_ruido", "rms_ruido"}}."""
     res = {}
     for metodo in METODOS:
-        pe, pesos = _promediar(epocas, metodo, tiempos, ventana_senal, tam_bloque)
+        prom = _promediar(epocas, metodo, tiempos, ventana_senal, tam_bloque)
+        if prom is None:
+            raise ValueError(
+                f'Modo "{metodo}": la amplitud media del PEP estimada en {ventana_senal} s '
+                "no es positiva. Revisá la ventana de señal, los canales o la polaridad.")
+        pe, pesos = prom
         res[metodo] = dict(pe=pe, pesos=pesos,
                            **calcular_snr(epocas, pe, pesos, tiempos, ventana_senal))
     return res

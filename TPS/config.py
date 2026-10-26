@@ -14,6 +14,10 @@ ARCHIVO_EVENTOS = DIR_DATOS / f"{BASE}_events.tsv"
 # ---- Canales ----
 CANALES = ["Cz", "CPz"]
 
+# ---- Artefacto de estimulación (se interpola ANTES de filtrar) ----
+INTERPOLAR_ARTEFACTO = True
+T_ARTEFACTO = (-0.001, 0.003)    # s respecto del estímulo; el artefacto dura ~1,5 ms
+
 # ---- Filtrado (Butterworth pasabanda + notch, fase cero) ----
 F_BAJO = 5.0      # Hz
 F_ALTO = 100.0    # Hz

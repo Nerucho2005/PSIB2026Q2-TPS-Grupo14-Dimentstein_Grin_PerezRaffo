@@ -19,17 +19,21 @@ def main():
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     cfg.DIR_RESULTADOS.mkdir(exist_ok=True)
 
-    # 1. Carga, selección de canales y filtrado
+    # 1. Eventos del .tsv (se necesitan antes de filtrar, para interpolar el artefacto)
+    eventos = cargar_eventos(cfg.ARCHIVO_EVENTOS)
+    muestras = eventos["sample"].to_numpy().astype(int) if cfg.INTERPOLAR_ARTEFACTO else None
+
+    # 2. Carga, selección de canales, interpolación del artefacto y filtrado
     res = preprocesar_eeg(cfg.ARCHIVO_EEG, canales=cfg.CANALES, f_bajo=cfg.F_BAJO,
                           f_alto=cfg.F_ALTO, orden=cfg.ORDEN, f_notch=cfg.F_NOTCH,
-                          q_notch=cfg.Q_NOTCH)
+                          q_notch=cfg.Q_NOTCH, muestras_estimulo=muestras,
+                          t_artefacto=cfg.T_ARTEFACTO)
 
-    # 2. Segmentación (eventos del .tsv)
-    eventos = cargar_eventos(cfg.ARCHIVO_EVENTOS)
+    # 3. Segmentación
     epocas, tiempos = segmentar_epocas(res.raw, eventos, tmin=cfg.TMIN, tmax=cfg.TMAX)
     M = epocas.shape[0]
 
-    # 3-4. Promedios y 6. SNR con todas las épocas
+    # 4. Promedios y SNR con todas las épocas
     r = snr_todos_los_metodos(epocas, tiempos, cfg.VENTANA_SENAL, cfg.TAM_BLOQUE)
     print(f"\nSNR con M = {M} épocas (dB)")
     print(f"{'método':>10} " + " ".join(f"{c:>8}" for c in res.canales))
