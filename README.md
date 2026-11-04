@@ -295,7 +295,17 @@ Contexto original del pendiente:
   - (Si se usa referencia promedio, **excluir los canales no EEG**: `S..`, `SC..`, `L1`, `L4`, `AC`, `AL`, ECG, EMG, etc.)
 - Comparar el PEP y la tabla de componentes con cada referencia, para ambos nervios. Se espera que las latencias no cambien y que la amplitud sí.
 
-### 2. Robustez de la curva SNR vs. N
+### 2. Robustez de la curva SNR vs. N — RESUELTO
+
+Implementado en `snr.py` (validado por Monte Carlo: el error estándar del jackknife es algo conservador, ~30–40 % mayor que la dispersión real; la pendiente media de la curva da ~10 dB/década, la teórica):
+- **No se usa bootstrap con reemplazo**: repite épocas (dos copias con signos opuestos se cancelan en el promedio alternado) y rompe el orden temporal. Se usa **jackknife por bloques** de épocas consecutivas.
+- `jackknife_snr(...)`: SNR con todas las épocas ± error estándar (quita 1 de `N_BLOQUES_JK` = 10 bloques por vez). `diferencia_metodos(jk, "n", "homogeneo")`: diferencia de SNR con **IC 95 % por jackknife pareado** (mismo bloque quitado en ambos métodos).
+- `curva_snr(...)`: para cada N, **bloques disjuntos** de N épocas consecutivas (≥ 4 bloques independientes; si no, jackknife dentro de las N épocas) → SNR ± error estándar. `ajustar_pendiente(...)`: pendiente de SNR vs. log10(N) ± error (teórica 10 dB/década). `snr_teorica_ajustada(...)`: recta +10·log10(N) ajustada sobre todos los puntos.
+- `_promediar` reintenta canal por canal si un canal no tiene PEP estimable (p. ej. el ipsilateral del mediano), en lugar de perder todos los canales.
+- `config.py`: `N_VALORES = [25, 50, 100, 125, 250]` (sin N = 10), `N_BLOQUES_JK = 10` (se eliminó `N_REP`).
+- `main.py` imprime y guarda `snr_<nervio>_<ref>.csv`, `diferencia_metodos_<nervio>_<ref>.csv`, `curva_snr_<nervio>_<ref>.csv`, figura del PEP + curva con barras de error, y **`pesos_<nervio>_<ref>.png`** (σ² del ruido y peso relativo de cada época en el modo `n`). Todas las salidas llevan nervio y referencia en el nombre.
+
+Contexto original del pendiente:
 
 - **Sacar N = 10** de `N_VALORES` (empezar en 25 o 50). Con N chico, el logaritmo diverge (punto de −32 dB) y los bloques de amplitud de `"s"`/`"sn"` quedan de ~5 épocas.
 - **Intervalos de confianza por *bootstrap*** sobre épocas, para la SNR de cada método y, sobre todo, para la **diferencia `n` − homogéneo** (remuestreo pareado), de modo que la conclusión "`n` mejora ~2–3 dB" tenga incertidumbre.
@@ -319,7 +329,18 @@ Contexto original del pendiente:
 - **Diferencias metodológicas con el paper**, para discutir: ellos interpolan el artefacto con **PCHIP** (interpolación cúbica de Hermite por tramos: respeta valores y pendientes en los bordes, sin sobreoscilar; mencionarla como variante de nuestra interpolación lineal) y ventanas individuales (≈ −1,8 a +4,4 ms; nosotros recta de −1 a +3 ms, justificada con `chequeo_artefacto.py`); remuestrean a 1000 Hz; usan ICA; filtran **30–400 Hz** + notch 48–53 Hz (nosotros 5–100 Hz, justificado con `comparar_pasaaltos.py`; 30 Hz eliminaría buena parte del N35/P45); usan **referencia promedio** y extraen los componentes con **CCA** (filtro espacial multicanal; amplitudes en unidades arbitrarias, no comparables con nuestros µV).
 - **Latencias del paper** (grupo N = 36): N20 19,81 ms, P40 40,86 ms. `sub-001`: N20 17,6–18,7 ms (según referencia), P40 40,9 ms → dentro de la distribución del grupo.
 - **Guía IFCN** (Mauguière et al., 1999, *Recommendations for the Practice of Clinical Neurophysiology*, EEG Suppl. 52, cap. 2.4 "Somatosensory evoked potentials"): estímulo < 5 Hz (dataset ≈ 1,3 Hz ✓); **500 barridos alcanzan** para los componentes corticales tempranos (✓, M = 500); filtros recomendados pasaaltos < 3 Hz y pasabajos > 2000 Hz, **notch apagado** (nosotros 5–100 Hz + notch 50 Hz: justificar como filtrado digital offline "de frecuencias de interés", que la guía admite, con la evidencia de `comparar_pasaaltos.py`; el notch es cuestionable según la guía y el promediado ya atenúa la red); montaje mediano **Pc–Fz** (Pc ≈ CP3/CP4); N20 medido en la máxima negatividad previa a la caída hacia el P25 y amplitud N20–P25 pico a pico en Pc–Fz; P22 y **N30 frontal** (confirma la interpretación del cambio de polaridad con Fz); P13/P14 de campo lejano, difuso y mediofrontal (la positividad de ~13 ms del mediano); tibial: **Cz' (2 cm detrás de Cz) contra Fz/FPz**, alternativas **CPz** y **oreja ipsilateral (Ei)** → CPz–LM; perfil en "W" **P39–N50–P60**; localización paradójica ipsilateral del P39; amplitud P39–N50 o base-pico; latencias dependientes de la altura; control de calidad por replicación (0,25/0,5 ms, 20 %).
+- **Notch de 50 Hz: se mantiene** (decisión tomada; no se prueba apagarlo). En el informe, aclarar que la IFCN recomienda apagarlo y justificar: es de fase cero, angosto (Q = 30) y no altera latencias; el promediado ya atenúa la red, que no está sincronizada con el estímulo.
 - Figuras/tablas a incluir: chequeo del artefacto, comparación de pasaaltos, comparación de referencias (ambos nervios), PEP + curva SNR por método, tablas de componentes.
+
+### Resultados de las 4 corridas (`sub-001`, M = 500, 5–100 Hz; Fz = elegida, RM = para la comparación de métodos)
+
+**Ganancia de `n` sobre el homogéneo (IC 95 %, jackknife pareado):** tibial CPz RM **+1,91 dB [0,62; 3,20]** ✓ vs. Fz +0,26 [−0,65; 1,17]; tibial Cz RM +2,03 ✓ vs. Fz +0,56; mediano CP4 RM +3,03 [−0,02; 6,09] vs. **Fz +3,00 [0,15; 5,85]** ✓. El modo `s` nunca es significativo (no hay habituación detectable); `sn` ≈ `n`.
+**Pesos (`pesos_*.png`):** tibial con RM, los picos de σ² (20–260 µV²) coinciden en Cz y CPz → ruido común que `n` aprovecha; con Fz, σ² baja a 5–60 µV² y los picos dejan de coincidir → la resta eliminó la parte común (explica la pérdida de ganancia). Mediano con Fz: siguen épocas muy ruidosas (pesos relativos hasta ~7) → la ganancia se mantiene.
+**Pendientes (homogéneo, dB/década, teórica 10):** tibial Fz 10,1 ± 0,3, RM 10,0 ± 0,9; mediano Fz 10,5 ± 0,3, RM 9,5 ± 0,9 → ruido ~independiente entre épocas.
+**Reproducibilidad IFCN:** con Fz todo cumple (N20 CP4 0,1 ms / 4 %; P40 CPz 0,1 ms / 11 %); con RM el N20 de CP4 no cumple (0,5 ms > 0,25). Ojo: el N20 espurio de CP3 con Fz también es reproducible (reproducible ≠ origen correcto).
+**Normas (Fz):** N20 CP4 18,7 ms (IFCN 19,8, lím. 23,0; z paper −0,92), N20–P25 6,30 µV (IFCN 3,2, mín. 0,8); P40 CPz 41,1 ms (IFCN 38,0, lím. 43,9; z paper 0,11), P40–N50 7,35 µV (IFCN 1,8, mín. 0,5). Todo normal; amplitudes por encima de la media normativa (otra banda de filtrado y otra población; el criterio clínico es el mínimo y la asimetría).
+**Mediano con Fz:** N35 y P45 no existen como tales (el N30 frontal invertido vuelve positiva la ventana); `teoria.py` ahora los marca con `polaridad_ok = False` / `valido = False`.
+**Correcciones aplicadas tras las corridas:** verificación de polaridad en `teoria.py` (columnas `polaridad_ok`, `valido`; solo los válidos se comparan con normas y paper) y `curva_snr` con `n_perm = 50`, igual que la tabla (antes el punto N = M no coincidía). Hay que volver a correr `main.py` para regenerar las tablas.
 
 ### Otros pendientes menores
 

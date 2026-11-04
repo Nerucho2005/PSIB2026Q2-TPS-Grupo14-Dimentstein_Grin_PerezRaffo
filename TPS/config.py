@@ -32,7 +32,7 @@ CANALES = {"tibial": ["Cz", "CPz"], "mediano": ["CP3", "CP4"]}[NERVIO]
 #     con REFERENCIA = "RM" o "mastoides_enlazadas".
 #   - tibial: con Fz la ganancia del promedio inhomogéneo casi desaparece; para la
 #     comparación de métodos, correr también con REFERENCIA = "RM".
-REFERENCIA = {"tibial": "Fz", "mediano": "Fz"}[NERVIO]
+REFERENCIA = {"tibial": "RM", "mediano": "RM"}[NERVIO]
 
 # ---- Artefacto de estimulación (se interpola ANTES de filtrar) ----
 INTERPOLAR_ARTEFACTO = True
@@ -53,5 +53,7 @@ TMAX = {"tibial": 0.120, "mediano": 0.080}[NERVIO]     # s, fin de la época
 VENTANA_SENAL = {"tibial": (0.015, 0.080),     # s, donde está el PEP: P40...N75
                  "mediano": (0.012, 0.060)}[NERVIO]   # N20...P45
 TAM_BLOQUE = 50                  # épocas por bloque para estimar amplitudes
-N_VALORES = [10, 25, 50, 100, 200, 400]   # N para la curva SNR vs. N (M se agrega solo)
-N_REP = 20                       # repeticiones por N en la curva
+# N para la curva SNR vs. N (M se agrega solo). Se usan bloques DISJUNTOS de N épocas;
+# con N <= M/4 hay >= 4 bloques independientes. N = 10 se descartó: la SNR diverge.
+N_VALORES = [25, 50, 100, 125, 250]
+N_BLOQUES_JK = 10                # bloques del jackknife para el error estándar de la SNR

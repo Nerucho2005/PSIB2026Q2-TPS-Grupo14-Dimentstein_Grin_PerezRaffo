@@ -21,6 +21,12 @@
 #     para respetar el orden P40 -> N50 -> P60 -> N75.
 #   - Si el extremo cae en el borde de la ventana, no es un pico real (la señal
 #     sigue subiendo/bajando): se marca en la columna "borde".
+#   - Si el extremo tiene la polaridad CONTRARIA a la esperada (p. ej. un "N35"
+#     positivo porque toda la ventana es positiva), el componente no está presente:
+#     se marca "polaridad_ok" = False. Pasa en el mediano con referencia Fz, donde el
+#     N30 frontal invertido vuelve positiva la región del N35.
+#   - "valido" = pico real (no borde) y con la polaridad esperada. Solo los válidos se
+#     comparan con las normas y el paper.
 #   - Amplitud base-pico: valor en el pico (la época ya tiene la línea de base
 #     restada en segmentar_epocas).
 #   - Amplitud pico a pico P40-N50: medida clínica habitual, menos sensible a
@@ -93,13 +99,16 @@ def medir_componentes(t, pe, componentes):
         ini = max(c["ventana"][0], t_prev + SEPARACION_MIN)
         m = (t >= ini) & (t <= c["ventana"][1])
         if m.sum() < 3:
-            filas.append(dict(componente=nombre, lat_ms=np.nan, amp_uV=np.nan, borde=True))
+            filas.append(dict(componente=nombre, lat_ms=np.nan, amp_uV=np.nan, borde=True,
+                              polaridad_ok=False, valido=False))
             continue
         idx = np.flatnonzero(m)
         k = idx[np.argmax(c["pol"] * pe[idx])]
         borde = k in (idx[0], idx[-1])
+        polaridad_ok = bool(c["pol"] * pe[k] > 0)
         t_prev = t[k]
-        filas.append(dict(componente=nombre, lat_ms=t[k] * 1e3, amp_uV=pe[k] * 1e6, borde=borde))
+        filas.append(dict(componente=nombre, lat_ms=t[k] * 1e3, amp_uV=pe[k] * 1e6, borde=borde,
+                          polaridad_ok=polaridad_ok, valido=bool(not borde and polaridad_ok)))
     return filas
 
 
@@ -117,24 +126,24 @@ def comparar_con_teoria(t, pe, canales, nervio="tibial"):
         for f in medidas:
             tip, sup = componentes[f["componente"]]["lat_ref"]
             media, sd = componentes[f["componente"]].get("lat_paper", (np.nan, np.nan))
-            z = (f["lat_ms"] - media) / sd if not f["borde"] else np.nan
+            z = (f["lat_ms"] - media) / sd if f["valido"] else np.nan
             f.update(canal=canal, lat_ref_ms=tip, lat_lim_sup_ms=sup,
                      lat_paper_ms=media, sd_paper_ms=sd, z_paper=z,
                      dif_ms=f["lat_ms"] - tip,
-                     # un extremo en el borde de la ventana no es un pico: no se evalúa
-                     dentro_rango=(f["lat_ms"] <= sup) if sup is not None and not f["borde"]
+                     # un extremo en el borde o con polaridad invertida no es un pico: no se evalúa
+                     dentro_rango=(f["lat_ms"] <= sup) if sup is not None and f["valido"]
                      else None)
             filas.append(f)
         pp = abs(amp[c1] - amp[c2])
         amp_media, amp_lim = AMP_PICO_A_PICO_REF[nervio]
-        en_borde = any(f["borde"] for f in medidas if f["componente"] in (c1, c2))
+        en_borde = any(not f["valido"] for f in medidas if f["componente"] in (c1, c2))
         filas.append(dict(canal=canal, componente=f"{c1}-{c2} (pico a pico)", amp_uV=pp,
                           amp_ref_uV=amp_media, amp_lim_inf_uV=amp_lim,
                           # sin picos reales no se evalúa
                           dentro_rango=None if en_borde else bool(pp >= amp_lim)))
     cols = ["canal", "componente", "lat_ms", "lat_ref_ms", "dif_ms", "lat_lim_sup_ms",
             "dentro_rango", "lat_paper_ms", "sd_paper_ms", "z_paper", "amp_uV",
-            "amp_ref_uV", "amp_lim_inf_uV", "borde"]
+            "amp_ref_uV", "amp_lim_inf_uV", "borde", "polaridad_ok", "valido"]
     return pd.DataFrame(filas)[cols]
 
 
@@ -178,7 +187,7 @@ def reproducibilidad(t, epocas, canales, nervio="tibial", modo="mitades"):
         amp_a, amp_b = ta.loc[(canal, pp), "amp_uV"], tb.loc[(canal, pp), "amp_uV"]
         d_lat = abs(lat_a - lat_b)
         d_amp = abs(amp_a - amp_b) / max(amp_a, amp_b)
-        valido = not (ta.loc[(canal, c1), "borde"] or tb.loc[(canal, c1), "borde"])
+        valido = bool(ta.loc[(canal, c1), "valido"] and tb.loc[(canal, c1), "valido"])
         filas.append(dict(canal=canal, componente=c1, lat_1_ms=lat_a, lat_2_ms=lat_b,
                           dif_lat_ms=d_lat, pp_1_uV=amp_a, pp_2_uV=amp_b, dif_amp_rel=d_amp,
                           cumple_lat=bool(d_lat <= tol_lat) if valido else None,
