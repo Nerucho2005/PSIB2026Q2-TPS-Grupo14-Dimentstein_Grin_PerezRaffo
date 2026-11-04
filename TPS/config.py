@@ -32,7 +32,7 @@ CANALES = {"tibial": ["Cz", "CPz"], "mediano": ["CP3", "CP4"]}[NERVIO]
 #     con REFERENCIA = "RM" o "mastoides_enlazadas".
 #   - tibial: con Fz la ganancia del promedio inhomogéneo casi desaparece; para la
 #     comparación de métodos, correr también con REFERENCIA = "RM".
-REFERENCIA = {"tibial": "RM", "mediano": "RM"}[NERVIO]
+REFERENCIA = {"tibial": "Fz", "mediano": "Fz"}[NERVIO]
 
 # ---- Artefacto de estimulación (se interpola ANTES de filtrar) ----
 INTERPOLAR_ARTEFACTO = True
@@ -57,3 +57,22 @@ TAM_BLOQUE = 50                  # épocas por bloque para estimar amplitudes
 # con N <= M/4 hay >= 4 bloques independientes. N = 10 se descartó: la SNR diverge.
 N_VALORES = [25, 50, 100, 125, 250]
 N_BLOQUES_JK = 10                # bloques del jackknife para el error estándar de la SNR
+# ---- Parámetros por nervio (para graficos.py, que procesa los dos nervios) ----
+DIR_FIGURAS = RAIZ / "informe" / "figuras"       # figuras finales del informe
+CANAL_PRINCIPAL = {"tibial": "CPz", "mediano": "CP4"}
+_RUN = {"tibial": "02", "mediano": "03"}
+_TAREA = {"tibial": "tibial", "mediano": "median"}
+_CANALES = {"tibial": ["Cz", "CPz"], "mediano": ["CP3", "CP4"]}
+_TMAX = {"tibial": 0.120, "mediano": 0.080}
+_VENTANA = {"tibial": (0.015, 0.080), "mediano": (0.012, 0.060)}
+_REFERENCIA = {"tibial": "Fz", "mediano": "Fz"}
+
+
+def parametros(nervio):
+    """Parámetros de un nervio cualquiera, independientes de NERVIO."""
+    base = f"sub-{SUJETO}_task-{_TAREA[nervio]}_run-{_RUN[nervio]}"
+    return dict(nervio=nervio, archivo_eeg=DIR_DATOS / f"{base}_eeg.set",
+                archivo_eventos=DIR_DATOS / f"{base}_events.tsv",
+                canales=list(_CANALES[nervio]), canal_principal=CANAL_PRINCIPAL[nervio],
+                tmax=_TMAX[nervio], ventana_senal=_VENTANA[nervio],
+                referencia=_REFERENCIA[nervio])

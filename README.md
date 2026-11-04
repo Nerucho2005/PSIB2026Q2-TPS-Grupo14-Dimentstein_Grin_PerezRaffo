@@ -62,7 +62,9 @@ PSIB2026Q2-TPS-Grupo14-Dimentstein_Grin_PerezRaffo/
 │   ├── teoria.py               # etapa 7: latencias y amplitudes vs. referencia
 │   ├── main.py                 # corre todo de punta a punta
 │   ├── chequeo_artefacto.py    # verificación: artefacto de estímulo e interpolación
-│   └── comparar_pasaaltos.py   # verificación: justificación del pasaaltos
+│   ├── comparar_pasaaltos.py   # verificación: justificación del pasaaltos
+│   ├── comparar_referencias.py # verificación: elección de la referencia
+│   └── graficos.py             # figuras finales del informe (genera informe/figuras/)
 ├── results/                # salidas de los scripts (FUERA de git, se regenera)
 ├── informe/                # figuras y tablas finales copiadas desde results/
 ├── .gitignore              # results/, __pycache__/, EEG-Paciente1/
@@ -83,6 +85,8 @@ pip install -r requirements.txt
 python TPS/main.py                  # pipeline completo
 python TPS/chequeo_artefacto.py     # verificación del artefacto
 python TPS/comparar_pasaaltos.py    # comparación de cortes del pasaaltos
+python TPS/comparar_referencias.py  # comparación de referencias
+python TPS/graficos.py              # las 10 figuras finales (ambos nervios; tarda varios minutos)
 ```
 
 Para cambiar de nervio, editar en `config.py`: `NERVIO = "tibial"` o `"mediano"`. Todo lo demás (archivo, canales, ventanas) se ajusta solo.
@@ -213,6 +217,34 @@ Ejecuta: eventos → `preprocesar_eeg` (con interpolación) → `segmentar_epoca
 
 - **`chequeo_artefacto.py`:** promedio **sin filtrar** alrededor del estímulo (zoom de −5 a 15 ms, con 30 épocas individuales), amplitud y duración del artefacto, y comparación crudo / filtrado / filtrado con interpolación. Salida: `artefacto_<canal>.png`.
 - **`comparar_pasaaltos.py`:** carga e interpola una vez, filtra con cortes de 0,5, 1, 2 y 5 Hz y reporta SNR, ruido, latencias y amplitudes. Salida: `comparacion_pasaaltos_<nervio>.csv/.png`.
+
+### 6.9 `graficos.py`: figuras finales del informe
+
+Tres partes: (1) **estilo común** (`estilo`, colores fijos por método `COLOR_METODO` y por referencia `COLOR_REF`, ancho A4, coma decimal con `fmt`/`coma`, leyendas compartidas debajo de cada figura, `guardar` en PNG 300 dpi + PDF en `informe/figuras/`); (2) **una función `fig_*` por figura**, que solo recibe datos ya calculados; (3) **orquestador** `generar_todas()` → `_procesar_nervio(nervio)` carga cada nervio una vez (canales de análisis + Fz, FPz, LM y la referencia promedio por tramos) y calcula todo con las funciones del pipeline. Usa `config.parametros(nervio)` (nuevo en `config.py`, junto con `DIR_FIGURAS` y `CANAL_PRINCIPAL`) para no depender de `NERVIO`.
+
+| Figura | Función | Contenido |
+|---|---|---|
+| 01_psd | `fig_psd` | PSD (Welch) crudo interpolado vs. filtrado, banda de paso y 50 Hz |
+| 02_artefacto | `fig_artefacto` | zoom sin filtrar con épocas individuales + promedio filtrado sin/con interpolación |
+| 03_pasaaltos | `fig_pasaaltos` | PEP con cortes de 0,5/1/2/5 Hz |
+| 04_pep_final | `fig_pep_final` | PEP homogéneo con Fz, componentes válidos rotulados y banda ±2·RMS del ruido |
+| 05_referencias | `fig_referencias` | PEP y ruido residual con RM, Fz, FPz, mastoides enlazadas y promedio (SNR y RMS) |
+| 06_lateralidad_mediano | `fig_lateralidad` | CP3 vs. CP4 con mastoides enlazadas, N20 marcado |
+| 07_curvas_snr | `fig_curvas` | SNR vs. N (homogéneo y n; Fz y RM) con barras de error, recta teórica y pendientes |
+| 08_diferencias_metodos | `fig_forest` | forest plot de n, s, sn − homogéneo con IC 95 % (Fz y RM, ambos nervios); también CSV |
+| 09_pesos_tibial | `fig_pesos` | σ² y peso relativo por época, tibial RM vs. Fz, misma escala |
+| 10_reproducibilidad | `fig_reproducibilidad` | primera vs. segunda mitad con Δlat, Δamp y criterio IFCN |
+
+**Observaciones de las figuras con datos reales (para el informe):**
+- 01 PSD: el pasabanda elimina la potencia < 5 Hz (deriva, mayor potencia del EEG) y atenúa > 100 Hz; el notch quita los 50 Hz. En el crudo hay picos en **150 Hz** (3.er armónico de la red, atenuado por el pasabajos, no por el notch) y **~187 Hz** (origen no identificado; fuera de la banda de paso).
+- 03 Pasaaltos (con Fz): en el mediano, con cortes < 5 Hz aparece una positividad lenta grande (N30 frontal invertido + componentes lentos); el tibial casi no cambia salvo amplitud base-pico. Esta figura (Fz) reemplaza la comparación previa con RM.
+- 04 PEP final: tibial con P40/N50/P60/N75 válidos; mediano con N20 y P25 válidos y N35/P45 no válidos (polaridad), como se esperaba con Fz.
+- 06 Lateralidad (mastoides enlazadas): el N20 (17,8 ms) aparece solo en CP4; pero CP3 (ipsilateral) muestra una negatividad grande a ~29 ms → los componentes posteriores al N20 son bilaterales/difusos.
+- 07 Curvas: pendiente del homogéneo ≈ 10 dB/década con ambas referencias (10,3 tibial, 10,4 mediano con Fz); la curva de `n` queda por encima en todo el rango en el mediano con Fz y en el tibial con RM.
+- 08 Forest: significativos (*) tibial RM n +1,91 y sn +1,90 dB; mediano Fz n +3,00 y sn +2,85 dB; mediano RM sn +3,18 dB. `s` nunca.
+- 10 Reproducibilidad con Fz: P40 Δlat 0,1 ms / Δamp 11,2 %; N20 Δlat 0,1 ms / Δamp 4,3 % → ambos cumplen IFCN.
+
+Las figuras provisorias de `main.py` y de los scripts de verificación se mantienen para trabajo exploratorio; las del informe son las de `graficos.py`.
 
 ---
 
@@ -345,5 +377,5 @@ Contexto original del pendiente:
 ### Otros pendientes menores
 
 - Actualizar el encabezado de `config.py` (todavía dice "pipeline del PEP tibial").
-- Crear `graficos.py` (figuras finales para el informe) e integrar la GUI.
+- ~~Crear `graficos.py`~~ (hecho, ver 6.9). Integrar la GUI.
 - Extensión: otros runs del mismo sujeto (tibial 04/06/08) concatenados, para extender la curva SNR a ~2000 épocas, y eventualmente otros sujetos (2–3).

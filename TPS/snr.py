@@ -179,7 +179,9 @@ def _jackknife(replicas, estimado):
     """Error estándar jackknife a partir de las k réplicas leave-one-out (axis 0)."""
     k = replicas.shape[0]
     validas = np.isfinite(replicas).all(axis=0) & np.isfinite(estimado)
-    with np.errstate(invalid="ignore"):
+    import warnings
+    with np.errstate(invalid="ignore"), warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)      # canales sin réplicas válidas
         media = np.nanmean(replicas, axis=0)
         se = np.sqrt((k - 1) / k * np.nansum((replicas - media) ** 2, axis=0))
     return np.where(validas, se, np.nan)
