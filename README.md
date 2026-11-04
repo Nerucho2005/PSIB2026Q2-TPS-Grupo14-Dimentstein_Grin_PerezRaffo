@@ -124,6 +124,7 @@ Convenciones de datos en todo el pipeline:
 | `SUJETO`, `RUN`, `TAREA`, `BASE` | `001`, `02`/`03` | Arman el nombre BIDS del archivo. |
 | `ARCHIVO_EEG`, `ARCHIVO_EVENTOS` | rutas | Construidas con `Path(__file__)`, independientes del directorio de ejecución. |
 | `CANALES` | tibial `["Cz","CPz"]`, mediano `["CP3","CP4"]` | En el mediano se dejan los dos para identificar el lado contralateral. |
+| `REFERENCIA` | `"Fz"` en ambos nervios (opciones: `"RM"`, `"Fz"`, `"FPz"`, `"LM"`, lista, `"mastoides_enlazadas"`, `"promedio"`) | Re-referencia aplicada al cargar (ver `filtrado.py`). Fz = montajes IFCN. |
 | `INTERPOLAR_ARTEFACTO`, `T_ARTEFACTO` | `True`, `(-0.001, 0.003)` | Ventana de interpolación respecto de cada estímulo. |
 | `F_BAJO`, `F_ALTO`, `ORDEN` | 5 Hz, 100 Hz, 4 | Butterworth pasabanda, aplicado con `sosfiltfilt` (fase cero). |
 | `F_NOTCH`, `Q_NOTCH` | 50 Hz, 30 | Notch IIR; `None` lo desactiva. |
@@ -265,7 +266,7 @@ Ejecuta: eventos → `preprocesar_eeg` (con interpolación) → `segmentar_epoca
 
 - **Funciones puras:** reciben y devuelven arrays. Sin leer archivos ni usar variables globales dentro de las funciones de cálculo.
 - **Parámetros en `config.py`**, no hardcodeados. Los valores por defecto internos de cada módulo (`TMIN`, `RUTA_EVENTOS`, `VENTANA_SENAL` de `snr.py`, etc.) son heredados: desde `main.py` siempre se pasan los de `config.py`.
-- **Git:** una rama corta por tarea (`feat/...`), nadie pushea directo a `main`, PR con revisión de un compañero. `config.py` se cambia solo con un PR visible para todo el grupo.
+- **Git:** desde noviembre de 2026 el resto del proyecto lo trabaja un solo integrante directamente en `main`: `git pull` al empezar, commits chicos, `git push` al terminar.
 - **Validar con datos sintéticos** (PEP conocido + ruido) antes de usar datos reales.
 - Terminal de Windows: **CMD** (los comandos multilínea con `\` o `` ` `` no sirven; escribir en una sola línea).
 
@@ -273,7 +274,15 @@ Ejecuta: eventos → `preprocesar_eeg` (con interpolación) → `segmentar_epoca
 
 ## 10. Pendientes (próxima sesión, en este orden)
 
-### 1. Parámetro de referencia (prioritario, sobre todo para el mediano)
+### 1. Parámetro de referencia — RESUELTO: **Fz en ambos nervios**
+
+Decisión final: `REFERENCIA = "Fz"` para tibial y mediano, los montajes clínicos IFCN (mediano Pc–Fz ≈ CP4–Fz; tibial Cz'–Fz ≈ CPz–Fz). Motivos: preserva la morfología característica del PES del mediano (la de Pc–Fz en la guía), da la mayor SNR en el mediano (18,7 dB) y una muy buena en el tibial (18,3 dB), y permite comparar con las normas. La comparación con el paper es solo de latencias (ellos usan CCA sobre referencia promedio, no una derivación). Advertencias: en el mediano, CP3–Fz muestra un N20 espurio (lateralidad → RM o mastoides enlazadas) y los componentes > 25 ms se mezclan con el N30 frontal; en el tibial, la ganancia del inhomogéneo con Fz es de solo +0,3 dB → **la comparación de métodos se reporta también con RM**. (Antes se había elegido la referencia promedio; se descartó porque atenúa la morfología del mediano.) Resultados de `comparar_referencias.py` (M = 500, 5–100 Hz): **tibial CPz** — latencia del P40 invariante (40,9–41,1 ms); P40–N50 máxima con RM (8,23 µV) y menor con promedio (6,51 µV), pero el ruido baja de 0,41 a 0,18 µV y la SNR homogénea sube de 15,4 a 20,2 dB; FPz (IFCN) no mejora nada. **Mediano CP4** — promedio: SNR 17,7 dB (RM 12,0; Fz 18,7), ruido 0,21 µV (RM 0,46). **La ganancia del inhomogéneo `n` depende de la referencia** (tibial: RM +1,9 dB, promedio +0,7, Fz +0,3; mediano: RM/Fz +3,0, promedio +2,1): parte de la variabilidad del ruido entre épocas es común a todos los canales y la re-referencia la elimina espacialmente → buen punto de discusión. La polaridad aparente cambia con la referencia porque se mide V_canal − V_ref (p. ej., con Fz entra el N30 frontal invertido en todos los canales: Fz − RM ≈ −5,7 µV a ~30 ms en CP3 y CP4). Reportar además la comparación de métodos con RM y los montajes IFCN para comparar con normas clínicas.
+
+Historia del pendiente:
+
+Estado: `filtrado.py` tiene `canales_de_referencia`, `referenciar`, `nombre_referencia` y `cargar_y_referenciar`; `preprocesar_eeg` acepta `referencia`; `config.py` tiene `REFERENCIA` por nervio (hoy `"RM"` en ambos); `comparar_referencias.py` compara RM, Fz, FPz y mastoides enlazadas. Resultado del **mediano (CP4)**: con **Fz** el N20 pasa de −1,04 a −3,13 µV, la amplitud N20–P25 de 1,92 a 6,30 µV y la SNR homogénea de 12,0 a 18,7 dB; la ventaja de `n` (~3 dB) no depende de la referencia. Con Fz/FPz, **CP3 muestra un "N20" espurio** (P20 de Fz invertido): la lateralidad se evalúa con RM o mastoides enlazadas. Con Fz, los componentes posteriores (>25 ms) se mezclan con actividad frontal. Recomendación: mediano con Fz para N20/SNR; mastoides enlazadas para lateralidad y componentes tardíos. Pendiente: correr con `NERVIO = "tibial"`; **referencia promedio** ya agregada (`"promedio"`, 64 canales de cuero cabelludo en `CANALES_EEG_CUERO`, calculada por tramos con `senal_referencia_promedio`); falta correrla con datos reales.
+
+Contexto original del pendiente:
 
 **Problema:** el EEG está referido a la mastoides derecha (RM). Cada canal es V_canal − V_RM, así que la actividad que capte RM se resta. RM está del mismo lado que CP4, lo que probablemente atenúa el N20 (~1 µV). Además, `seleccionar_canales` descarta los demás canales **antes** de cualquier re-referencia, así que hoy no se puede cambiar.
 
@@ -293,11 +302,24 @@ Ejecuta: eventos → `preprocesar_eeg` (con interpolación) → `segmentar_epoca
 - Barras de error en la curva y **recta teórica anclada por ajuste** sobre todos los puntos (hoy se ancla en N = M, el punto más ruidoso; de ahí el salto final).
 - Opcional: gráfico de **pesos y σ² en función del número de época** (modo `"n"`), que explica por qué gana el inhomogéneo.
 
-### 3. Valores de referencia de `teoria.py`
+### 3. Valores de referencia de `teoria.py` — RESUELTO
+
+- Valores del paper del dataset (`lat_paper`, `z_paper`): N20 19,81 ± 1,20 ms, P40 40,86 ± 2,28 ms (media ± SD; el paper da EE, SD = EE·√36).
+- Valores clínicos IFCN (Mauguière et al. 1999, Tablas 3 y 4): N20 19,8 ms (lím. sup. 23,0 = media + 3 SD), N20–P25 3,2 µV (lím. inf. 0,8); P39/P40 38,0 ms (lím. sup. 43,9), P39–N50 1,8 µV (lím. inf. 0,5). Para N50/P60/N75/P25/N35/P45 la guía no da latencias (nominales).
+- Nuevo: `reproducibilidad(t, epocas, canales, nervio, modo)` — control de calidad IFCN: dos subpromedios (primera/segunda mitad o par/impar) deben coincidir en latencia (0,25 ms; 0,5 ms para el P39) y amplitud (±20 %). `main.py` lo imprime y guarda `reproducibilidad_<nervio>.csv`.
+
 
 - Reemplazar las latencias orientativas de `COMPONENTES_POR_NERVIO` (P40 típica 38 ms / límite superior 44 ms; N20 19,5 / 23 ms; el resto nominales) por los de la **bibliografía de la materia** (p. ej. guía 9D de la ACNS, Cruccu et al. 2008, *Clin Neurophysiol*).
 - Revisar en `participants.tsv` si figura la **altura** del sujeto: la latencia depende de la longitud de la vía (P40 medido = 40,9 ms; N20 medido = 17,6 ms).
 - Confirmar con la bibliografía la interpretación de la positividad de ~13 ms del mediano (¿P14 de campo lejano?).
+
+### Notas para el informe (a tener en cuenta al redactar)
+
+- **Paper del dataset:** Nierula et al. (2024), *PLOS Biology*, "A multichannel electrophysiological approach to noninvasively and precisely record human spinal cord activity" (doi: 10.1371/journal.pbio.3002828). Estímulo en **mediano izquierdo** (muñeca) y **tibial izquierdo** (tobillo): confirma N20 en CP4. Registro EEG contra RM; Fz agregado a propósito para re-referenciar.
+- **Diferencias metodológicas con el paper**, para discutir: ellos interpolan el artefacto con **PCHIP** (interpolación cúbica de Hermite por tramos: respeta valores y pendientes en los bordes, sin sobreoscilar; mencionarla como variante de nuestra interpolación lineal) y ventanas individuales (≈ −1,8 a +4,4 ms; nosotros recta de −1 a +3 ms, justificada con `chequeo_artefacto.py`); remuestrean a 1000 Hz; usan ICA; filtran **30–400 Hz** + notch 48–53 Hz (nosotros 5–100 Hz, justificado con `comparar_pasaaltos.py`; 30 Hz eliminaría buena parte del N35/P45); usan **referencia promedio** y extraen los componentes con **CCA** (filtro espacial multicanal; amplitudes en unidades arbitrarias, no comparables con nuestros µV).
+- **Latencias del paper** (grupo N = 36): N20 19,81 ms, P40 40,86 ms. `sub-001`: N20 17,6–18,7 ms (según referencia), P40 40,9 ms → dentro de la distribución del grupo.
+- **Guía IFCN** (Mauguière et al., 1999, *Recommendations for the Practice of Clinical Neurophysiology*, EEG Suppl. 52, cap. 2.4 "Somatosensory evoked potentials"): estímulo < 5 Hz (dataset ≈ 1,3 Hz ✓); **500 barridos alcanzan** para los componentes corticales tempranos (✓, M = 500); filtros recomendados pasaaltos < 3 Hz y pasabajos > 2000 Hz, **notch apagado** (nosotros 5–100 Hz + notch 50 Hz: justificar como filtrado digital offline "de frecuencias de interés", que la guía admite, con la evidencia de `comparar_pasaaltos.py`; el notch es cuestionable según la guía y el promediado ya atenúa la red); montaje mediano **Pc–Fz** (Pc ≈ CP3/CP4); N20 medido en la máxima negatividad previa a la caída hacia el P25 y amplitud N20–P25 pico a pico en Pc–Fz; P22 y **N30 frontal** (confirma la interpretación del cambio de polaridad con Fz); P13/P14 de campo lejano, difuso y mediofrontal (la positividad de ~13 ms del mediano); tibial: **Cz' (2 cm detrás de Cz) contra Fz/FPz**, alternativas **CPz** y **oreja ipsilateral (Ei)** → CPz–LM; perfil en "W" **P39–N50–P60**; localización paradójica ipsilateral del P39; amplitud P39–N50 o base-pico; latencias dependientes de la altura; control de calidad por replicación (0,25/0,5 ms, 20 %).
+- Figuras/tablas a incluir: chequeo del artefacto, comparación de pasaaltos, comparación de referencias (ambos nervios), PEP + curva SNR por método, tablas de componentes.
 
 ### Otros pendientes menores
 

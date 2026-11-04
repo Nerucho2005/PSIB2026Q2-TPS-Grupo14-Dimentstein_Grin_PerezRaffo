@@ -1,6 +1,5 @@
 # config.py
-# Parámetros compartidos del pipeline del PEP tibial.
-# Es el único archivo común a todos: cambiarlo solo con un PR que vea el grupo.
+# Parámetros compartidos del pipeline de PES (nervio tibial y mediano).
 from pathlib import Path
 
 # ---- Rutas ----
@@ -19,6 +18,21 @@ ARCHIVO_EVENTOS = DIR_DATOS / f"{BASE}_events.tsv"
 # Mediano: CP3/CP4 ~ C3'/C4'. El N20 aparece solo en el CONTRALATERAL al brazo
 # estimulado; se dejan los dos para identificar el lado.
 CANALES = {"tibial": ["Cz", "CPz"], "mediano": ["CP3", "CP4"]}[NERVIO]
+
+# ---- Referencia ----
+# "RM" (adquisición), "Fz", "FPz", una lista de canales, "mastoides_enlazadas"
+# o "promedio" (64 canales de cuero cabelludo, la que usa el paper del dataset).
+# Montajes IFCN: tibial CPz-FPz, mediano CP3/CP4-Fz. Ver comparar_referencias.py.
+# Se usa Fz en ambos nervios: son los montajes clínicos de la IFCN (Mauguière et al.
+# 1999): mediano Pc-Fz (CP4-Fz) y tibial Cz'-Fz (CPz-Fz). Así los resultados son
+# comparables con las normas, y la latencia con el paper (que extrae los componentes
+# con CCA sobre referencia promedio, no en una derivación). Advertencias:
+#   - mediano: con Fz, CP3 muestra un "N20" espurio (P20 de Fz invertido) y los
+#     componentes > 25 ms se mezclan con el N30 frontal. La lateralidad se evalúa
+#     con REFERENCIA = "RM" o "mastoides_enlazadas".
+#   - tibial: con Fz la ganancia del promedio inhomogéneo casi desaparece; para la
+#     comparación de métodos, correr también con REFERENCIA = "RM".
+REFERENCIA = {"tibial": "Fz", "mediano": "Fz"}[NERVIO]
 
 # ---- Artefacto de estimulación (se interpola ANTES de filtrar) ----
 INTERPOLAR_ARTEFACTO = True

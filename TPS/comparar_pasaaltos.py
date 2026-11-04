@@ -16,8 +16,7 @@ import numpy as np
 import pandas as pd
 
 import config as cfg
-from filtrado import (_disenar_filtros, _filtrar, cargar_eeg, interpolar_artefacto,
-                      seleccionar_canales)
+from filtrado import _disenar_filtros, _filtrar, cargar_y_referenciar, interpolar_artefacto
 from segmentacion import cargar_eventos, segmentar_epocas
 from snr import calcular_snr, pesos_homogeneos
 from promedio import promedio_homogeneo, promedio_inhomogeneo
@@ -27,8 +26,7 @@ CORTES = [0.5, 1.0, 2.0, 5.0]   # Hz; el actual es cfg.F_BAJO
 
 
 def main():
-    raw = seleccionar_canales(cargar_eeg(cfg.ARCHIVO_EEG), cfg.CANALES)
-    raw.load_data()
+    raw = cargar_y_referenciar(cfg.ARCHIVO_EEG, cfg.CANALES, cfg.REFERENCIA)
     fs, canales = raw.info["sfreq"], raw.ch_names
     eventos = cargar_eventos(cfg.ARCHIVO_EVENTOS)
     muestras = eventos["sample"].to_numpy().astype(int)

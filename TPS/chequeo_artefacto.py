@@ -15,8 +15,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import config as cfg
-from filtrado import (_disenar_filtros, _filtrar, cargar_eeg, interpolar_artefacto,
-                      seleccionar_canales)
+from filtrado import _disenar_filtros, _filtrar, cargar_y_referenciar, interpolar_artefacto
 from segmentacion import cargar_eventos
 
 T_BASE = (-0.010, -0.001)   # s, línea de base para el promedio crudo
@@ -47,8 +46,7 @@ def duracion_artefacto(prom, t, ventana_base, k):
 
 
 def main():
-    raw = seleccionar_canales(cargar_eeg(cfg.ARCHIVO_EEG), cfg.CANALES)
-    raw.load_data()
+    raw = cargar_y_referenciar(cfg.ARCHIVO_EEG, cfg.CANALES, cfg.REFERENCIA)
     fs = raw.info["sfreq"]
     crudo = raw.get_data()
 

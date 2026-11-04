@@ -1,5 +1,5 @@
 # main.py
-# Corre el pipeline completo del PEP tibial:
+# Corre el pipeline completo del PES (nervio según config.NERVIO):
 #   carga + filtrado -> segmentación -> promedios -> SNR -> figuras
 # Los parámetros están en config.py.
 #
@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 import config as cfg
-from filtrado import preprocesar_eeg
+from filtrado import nombre_referencia, preprocesar_eeg
 from segmentacion import cargar_eventos, segmentar_epocas
 from snr import METODOS, curva_snr, snr_teorica_homogeneo, snr_todos_los_metodos
 from teoria import comparar_con_teoria, tabla_metodos
@@ -29,7 +29,8 @@ def main():
     res = preprocesar_eeg(cfg.ARCHIVO_EEG, canales=cfg.CANALES, f_bajo=cfg.F_BAJO,
                           f_alto=cfg.F_ALTO, orden=cfg.ORDEN, f_notch=cfg.F_NOTCH,
                           q_notch=cfg.Q_NOTCH, muestras_estimulo=muestras,
-                          t_artefacto=cfg.T_ARTEFACTO)
+                          t_artefacto=cfg.T_ARTEFACTO, referencia=cfg.REFERENCIA)
+    ref = nombre_referencia(cfg.REFERENCIA)
 
     # 3. Segmentación
     epocas, tiempos = segmentar_epocas(res.raw, eventos, tmin=cfg.TMIN, tmax=cfg.TMAX)
@@ -37,7 +38,7 @@ def main():
 
     # 4. Promedios y SNR con todas las épocas
     r = snr_todos_los_metodos(epocas, tiempos, cfg.VENTANA_SENAL, cfg.TAM_BLOQUE)
-    print(f"\nSNR con M = {M} épocas (dB)")
+    print(f"\nSNR con M = {M} épocas (dB) | referencia {ref}")
     print(f"{'método':>10} " + " ".join(f"{c:>8}" for c in res.canales))
     for met in METODOS:
         print(f"{met:>10} " + " ".join(f"{v:8.2f}" for v in r[met]["snr_db"]))
@@ -70,7 +71,7 @@ def main():
             ax1.plot(t_ms, r[met]["pe"][i] * 1e6, lw=1, label=met)
         ax1.axvspan(*(np.array(cfg.VENTANA_SENAL) * 1e3), color="0.9", zorder=0)
         ax1.axvline(0, color="k", lw=0.5)
-        ax1.set(xlabel="Tiempo (ms)", ylabel="Amplitud (µV)", title=f"PEP {cfg.NERVIO} — {canal}")
+        ax1.set(xlabel="Tiempo (ms)", ylabel="Amplitud (µV)", title=f"PEP {cfg.NERVIO} — {canal} (ref. {ref})")
         ax1.legend()
 
         for met in METODOS:

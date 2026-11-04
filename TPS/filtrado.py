@@ -1,5 +1,26 @@
-# preprocesamiento_pep.py
-# Carga, selección de canales y filtrado (fase cero) del EEG continuo para PESS del nervio tibial.
+# filtrado.py
+# Carga, selección de canales, re-referencia, interpolación del artefacto de
+# estímulo y filtrado (fase cero) del EEG continuo para PES (tibial y mediano).
+#
+# Referencia: el EEG del dataset está referido a la mastoides derecha (RM), que no
+# figura como canal. Cada canal es V_canal - V_RM, así que la actividad que capte
+# RM se resta de todos los canales. Opciones (parámetro `referencia`):
+#   "RM" o None            -> la de adquisición, sin cambios.
+#   "Fz", "FPz" o [lista]  -> se resta un canal o el promedio de varios.
+#                             Montajes IFCN: tibial CPz-FPz, mediano CP3/CP4-Fz.
+#   "mastoides_enlazadas"  -> (LM + RM)/2, simétrica. Como RM vale 0 en los datos,
+#                             equivale a restar LM/2 a cada canal.
+# La re-referencia necesita cargar también el/los canales de referencia, por eso
+# se hace en cargar_y_referenciar, ANTES de quedarse solo con los canales de
+# análisis. Como es una operación lineal, el orden respecto de la interpolación
+# y el filtrado no cambia el resultado.
+#   "promedio"             -> promedio de los 64 canales de EEG de cuero cabelludo
+#                             (CANALES_EEG_CUERO; la que usa el paper del dataset).
+#                             Excluye los no EEG (S.., SC.., Iz, L1, L4, AC, AL, ECG,
+#                             EMG...). Cargar los 64 juntos ocuparía ~2 GB a 10 kHz,
+#                             así que el promedio se calcula por tramos de tiempo
+#                             (senal_referencia_promedio). RM no se suma (vale 0 y
+#                             no es un canal): el factor 64/65 es despreciable.
 #
 # Limitaciones del filtrado de fase cero (sosfiltfilt):
 # - Es no causal: el artefacto de estimulación y las ondas rápidas generan oscilaciones
@@ -83,6 +104,105 @@ def seleccionar_canales(raw, canales):
     return raw.copy().pick(encontrados)
 
 
+MASTOIDES_ENLAZADAS = "mastoides_enlazadas"
+PROMEDIO = "promedio"
+
+# 64 canales de EEG de cuero cabelludo (Nierula et al. 2024, Métodos). LM incluida.
+CANALES_EEG_CUERO = [
+    "Fp1", "Fp2", "F3", "F4", "C3", "C4", "P3", "P4", "O1", "O2", "F7", "F8", "T7", "T8",
+    "P7", "P8", "AFz", "Fz", "Cz", "Pz", "FC1", "FC2", "CP1", "CP2", "FC5", "FC6", "CP5",
+    "CP6", "FT9", "FT10", "LM", "FCz", "F1", "F2", "C1", "C2", "P1", "P2", "AF3", "AF4",
+    "FC3", "FC4", "CP3", "CP4", "PO3", "PO4", "F5", "F6", "C5", "C6", "P5", "P6", "AF7",
+    "AF8", "FT7", "FT8", "TP7", "TP8", "PO7", "PO8", "FPz", "CPz", "F9", "F10"]
+
+
+def canales_de_referencia(referencia):
+    """Canales que hay que cargar para aplicar la referencia pedida."""
+    if referencia in (None, "RM"):
+        return []
+    if referencia == MASTOIDES_ENLAZADAS:
+        return ["LM"]
+    if referencia == PROMEDIO:
+        return list(CANALES_EEG_CUERO)
+    return [referencia] if isinstance(referencia, str) else list(referencia)
+
+
+def referenciar(datos, nombres, canales, referencia):
+    """Re-referencia y devuelve SOLO los canales de análisis.
+    datos: (n_canales_cargados, n_muestras) referidos a RM | nombres: sus nombres
+    canales: canales de análisis | referencia: ver encabezado del módulo.
+    Devuelve (len(canales), n_muestras)."""
+    idx = {n.lower(): i for i, n in enumerate(nombres)}
+    faltan = [c for c in list(canales) + canales_de_referencia(referencia)
+              if c.lower() not in idx]
+    if faltan:
+        raise ValueError(f"Faltan canales para referenciar: {faltan}. Cargados: {list(nombres)}")
+    sel = datos[[idx[c.lower()] for c in canales]]
+    if referencia in (None, "RM"):
+        return sel.copy()
+    if referencia == MASTOIDES_ENLAZADAS:
+        return sel - 0.5 * datos[idx["lm"]]
+    ref = datos[[idx[r.lower()] for r in canales_de_referencia(referencia)]].mean(axis=0)
+    return sel - ref
+
+
+def nombre_referencia(referencia):
+    """Etiqueta corta para títulos y nombres de archivo."""
+    if referencia in (None, "RM"):
+        return "RM"
+    if referencia == MASTOIDES_ENLAZADAS:
+        return "LMRM"
+    if referencia == PROMEDIO:
+        return "PROM"
+    return "-".join(canales_de_referencia(referencia))
+
+
+def senal_referencia_promedio(raw, canales=CANALES_EEG_CUERO, bloque_s=10.0):
+    """Promedio de `canales` en cada instante, calculado por tramos de `bloque_s`
+    segundos para no cargar todos los canales juntos en memoria.
+    raw: Raw sin precargar (o precargado). Devuelve (n_muestras,) en V."""
+    disponibles = {c.lower(): c for c in raw.ch_names}
+    faltan = [c for c in canales if c.lower() not in disponibles]
+    if faltan:
+        raise ValueError(f"Faltan canales para la referencia promedio: {faltan}")
+    picks = [disponibles[c.lower()] for c in canales]
+    paso = int(bloque_s * raw.info["sfreq"])
+    ref = np.empty(raw.n_times)
+    for ini in range(0, raw.n_times, paso):
+        fin = min(ini + paso, raw.n_times)
+        ref[ini:fin] = raw.get_data(picks=picks, start=ini, stop=fin).mean(axis=0)
+    return ref
+
+
+def cargar_y_referenciar(registro, canales, referencia=None):
+    """Carga solo los canales de análisis y los de referencia, re-referencia y
+    devuelve un Raw (en memoria) con los canales de análisis y las anotaciones.
+    registro: ruta a un .set, carpeta, o un mne.io.Raw ya abierto."""
+    raw = registro if isinstance(registro, mne.io.BaseRaw) else cargar_eeg(registro)
+    disponibles = {c.lower(): c for c in raw.ch_names}
+    analisis = [disponibles[c.lower()] for c in canales if c.lower() in disponibles]
+    if len(analisis) < len(canales):
+        seleccionar_canales(raw, canales)          # avisa o falla con el mensaje de siempre
+    if referencia == PROMEDIO:
+        ref = senal_referencia_promedio(raw)
+        sel = seleccionar_canales(raw, analisis)
+        sel.load_data()
+        datos = sel.get_data() - ref
+    else:
+        necesarios = list(dict.fromkeys(analisis + canales_de_referencia(referencia)))
+        sel = seleccionar_canales(raw, necesarios)
+        sel.load_data()
+        datos = referenciar(sel.get_data(), sel.ch_names, analisis, referencia)
+    info = sel.copy().pick(analisis).info
+    nuevo = mne.io.RawArray(datos, info, verbose="ERROR")
+    nuevo.set_annotations(sel.annotations)
+    if referencia not in (None, "RM"):
+        cr = canales_de_referencia(referencia)
+        log.info("Referencia: %s (%s)", nombre_referencia(referencia),
+                 f"{len(cr)} canales de cuero cabelludo" if referencia == PROMEDIO else cr)
+    return nuevo
+
+
 def interpolar_artefacto(datos, muestras_estimulo, fs, t_ini=-0.001, t_fin=0.003):
     """Reemplaza el artefacto de estimulación por una recta.
     Para cada estímulo, une con una recta la muestra en t_ini y la muestra en
@@ -146,20 +266,22 @@ def graficar_comparacion(crudo, filtrado, inicio_s=0.0, duracion_s=5.0):
 
 def preprocesar_eeg(registro="EEG-Paciente1", canales=None, f_bajo=5.0, f_alto=100.0, orden=4,
                     f_notch=50.0, q_notch=30.0, graficar=False, ventana_grafico=(0.0, 5.0),
-                    muestras_estimulo=None, t_artefacto=(-0.001, 0.003)):
+                    muestras_estimulo=None, t_artefacto=(-0.001, 0.003), referencia=None):
     # Selecciona canales, interpola el artefacto de estímulo y filtra el EEG continuo
     # (bandpass Butterworth + notch, fase cero).
     # registro: carpeta (se usa ARCHIVO_POR_DEFECTO), ruta a un .set, o un mne.io.Raw ya cargado.
     # f_notch=None desactiva el notch.
     # muestras_estimulo: índices de muestra de los estímulos; None no interpola.
     # t_artefacto: (t_ini, t_fin) en s respecto de cada estímulo.
+    # referencia: "RM"/None (adquisición), "Fz", "FPz", lista de canales,
+    # "mastoides_enlazadas" o "promedio".
     raw = registro if isinstance(registro, mne.io.BaseRaw) else cargar_eeg(registro)
     _informar(raw)
     if any("boundary" in d.lower() for d in raw.annotations.description):
         warnings.warn("El registro tiene discontinuidades ('boundary'); el filtrado las atraviesa.")
 
-    seleccion = seleccionar_canales(raw, canales or CANALES_POR_DEFECTO)
-    seleccion.load_data()  # solo ahora se leen los datos, y solo de los canales elegidos
+    # solo ahora se leen los datos, y solo de los canales de análisis y de referencia
+    seleccion = cargar_y_referenciar(raw, canales or CANALES_POR_DEFECTO, referencia)
     fs = seleccion.info["sfreq"]
     if muestras_estimulo is not None:
         seleccion.apply_function(
@@ -187,7 +309,8 @@ def preprocesar_eeg(registro="EEG-Paciente1", canales=None, f_bajo=5.0, f_alto=1
 
     parametros = dict(f_bajo=f_bajo, f_alto=f_alto, orden=orden, f_notch=f_notch,
                       q_notch=q_notch, padlen=padlen,
-                      t_artefacto=None if muestras_estimulo is None else t_artefacto)
+                      t_artefacto=None if muestras_estimulo is None else t_artefacto,
+                      referencia=nombre_referencia(referencia))
     return ResultadoPreprocesamiento(filtrado, fs, filtrado.ch_names, eventos, event_id, parametros)
 
 
