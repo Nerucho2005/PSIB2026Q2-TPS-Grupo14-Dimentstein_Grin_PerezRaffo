@@ -1,93 +1,61 @@
 # teoria.py
-# Etapa 7: latencias y amplitudes del PEP (tibial o mediano), medidas
-# automáticamente y comparadas con valores de referencia.
+# Etapa 7: latencias y amplitudes del PES del nervio MEDIANO, medidas automáticamente
+# y comparadas con valores de referencia.
 #
-# Nomenclatura: polaridad + latencia típica en ms.
-#
-# Nervio TIBIAL (canales CPz/Cz; en la literatura P40/N50 = P37/N45):
-#   P40 (P37): primer componente cortical, área somatosensorial del pie (cara
-#              medial del hemisferio). Máximo en CPz/Cz', o en CP1/CP2 del lado
-#              ipsilateral a la pierna estimulada (dipolo horizontal).
-#   N50 (N45), P60, N75: componentes siguientes.
-#
-# Nervio MEDIANO (canal CP3 o CP4 CONTRALATERAL al brazo estimulado = C3'/C4'):
+# Componentes (canal CP4, contralateral al brazo izquierdo estimulado ≈ Pc de la IFCN):
 #   N20: primer componente cortical (área 3b, giro poscentral).
 #   P25 (P27), N35 (N33), P45: componentes parietales siguientes.
-#   En el canal ipsilateral el N20 no aparece: sirve para identificar el lado.
+#   En el canal ipsilateral (CP3) el N20 no aparece (con referencia simétrica).
 #
 # Medición:
 #   - Cada pico es el extremo con la polaridad esperada dentro de su ventana de
 #     búsqueda. La ventana de cada componente empieza después del pico anterior,
-#     para respetar el orden P40 -> N50 -> P60 -> N75.
+#     para respetar el orden N20 -> P25 -> N35 -> P45.
 #   - Si el extremo cae en el borde de la ventana, no es un pico real (la señal
 #     sigue subiendo/bajando): se marca en la columna "borde".
 #   - Si el extremo tiene la polaridad CONTRARIA a la esperada (p. ej. un "N35"
 #     positivo porque toda la ventana es positiva), el componente no está presente:
-#     se marca "polaridad_ok" = False. Pasa en el mediano con referencia Fz, donde el
-#     N30 frontal invertido vuelve positiva la región del N35.
+#     "polaridad_ok" = False. Pasa con referencia Fz, donde el N30 frontal invertido
+#     vuelve positiva la región del N35.
 #   - "valido" = pico real (no borde) y con la polaridad esperada. Solo los válidos se
 #     comparan con las normas y el paper.
-#   - Amplitud base-pico: valor en el pico (la época ya tiene la línea de base
-#     restada en segmentar_epocas).
-#   - Amplitud pico a pico P40-N50: medida clínica habitual, menos sensible a
-#     corrimientos lentos de la línea de base y al pasaaltos.
+#   - Amplitud base-pico: valor en el pico (la época ya tiene la línea de base restada).
+#   - Amplitud pico a pico N20-P25: la medida clínica de la IFCN, menos sensible a la
+#     línea de base y al pasaaltos.
 #
-# VALORES CLÍNICOS (lat_ref, amp_ref): guía de la IFCN, Mauguière et al. (1999),
-# "Somatosensory evoked potentials", EEG Suppl. 52, Tablas 3 y 4 (adultos jóvenes,
-# altura 1,70 ± 0,1 m). Límite superior de latencia = media + 3 SD.
-#   Mediano: N20 (Pc-EPc) 19,8 ms, límite 23,0 ms. N20-P25 pico a pico (Pc-Fz)
-#            3,2 µV, límite inferior 0,8 µV.
-#   Tibial:  P39 (= P40) (Cz'-Ei) 38,0 ms, límite 43,9 ms. P39-N50 1,8 µV,
-#            límite inferior 0,5 µV.
-# Para N50, P60, N75, P25, N35 y P45 la guía no da latencias: se usan valores
-# nominales (el número del nombre) sin límite.
-# OJO: las normas se definen para montajes clínicos (Pc-Fz, Cz'-Fz/Ei), que son los
-# que usa el pipeline (REFERENCIA = "Fz"); con otra
-# referencia las amplitudes no son directamente comparables y la latencia puede
-# correrse ~1 ms (ver comparar_referencias.py).
+# VALORES CLÍNICOS: guía de la IFCN, Mauguière et al. (1999), EEG Suppl. 52, Tablas 3
+# y 4 (adultos jóvenes, altura 1,70 ± 0,1 m). Límite superior de latencia = media + 3 SD.
+#   N20 (Pc-EPc) 19,8 ms, límite 23,0 ms. N20-P25 pico a pico (Pc-Fz) 3,2 µV, límite
+#   inferior 0,8 µV. Para P25, N35 y P45 la guía no da latencias: se usan valores
+#   nominales (el número del nombre) sin límite. Las normas se definen con filtros
+#   clínicos (pasaaltos < 3 Hz): con 30-400 Hz las amplitudes no son directamente
+#   comparables (el pasaaltos las reduce), pero las latencias sí.
 #
-# VALORES DEL DATASET (lat_paper): media y desvío estándar del grupo de Nierula
-# et al. (2024, PLOS Biol, Tabla 1; N = 36, estímulo en muñeca/tobillo izquierdos).
-# El paper reporta media ± error estándar: N20 19,81 ± 0,20 ms y P40 40,86 ±
-# 0,38 ms. SD = EE·√36 -> N20 ≈ 1,20 ms, P40 ≈ 2,28 ms. Ojo: ellos extraen los
-# componentes con CCA (filtro espacial) sobre referencia promedio y 30-400 Hz,
-# así que la comparación de latencias es razonable pero no la de amplitudes
-# (unidades arbitrarias). Se reporta z = (lat - media) / SD.
+# VALORES DEL DATASET (lat_paper): Nierula et al. (2024, PLOS Biol, Tabla 1; N = 36).
+# El paper reporta media ± error estándar: N20 19,81 ± 0,20 ms. SD = EE·√36 ≈ 1,20 ms.
+# Ellos extraen el N20 con CCA (filtro espacial) sobre referencia promedio, así que la
+# comparación de latencias es razonable pero no la de amplitudes (unidades
+# arbitrarias). Se reporta z = (lat - media) / SD.
 import numpy as np
 import pandas as pd
 
-COMPONENTES_POR_NERVIO = {
-    # polaridad, ventana de búsqueda (s), latencia de referencia (ms): (típica, lím. sup.)
-    # El primer par de cada nervio define la amplitud pico a pico.
-    "tibial": {
-        "P40": dict(pol=+1, ventana=(0.032, 0.050), lat_ref=(38.0, 43.9),
-                    lat_paper=(40.86, 0.38 * 6)),
-        "N50": dict(pol=-1, ventana=(0.042, 0.060), lat_ref=(47.0, None)),
-        "P60": dict(pol=+1, ventana=(0.052, 0.070), lat_ref=(60.0, None)),
-        "N75": dict(pol=-1, ventana=(0.062, 0.095), lat_ref=(75.0, None)),
-    },
-    "mediano": {
-        "N20": dict(pol=-1, ventana=(0.015, 0.025), lat_ref=(19.8, 23.0),
-                    lat_paper=(19.81, 0.20 * 6)),
-        "P25": dict(pol=+1, ventana=(0.020, 0.032), lat_ref=(25.0, None)),
-        "N35": dict(pol=-1, ventana=(0.028, 0.042), lat_ref=(33.0, None)),
-        "P45": dict(pol=+1, ventana=(0.038, 0.055), lat_ref=(45.0, None)),
-    },
+# polaridad, ventana de búsqueda (s), latencia de referencia (ms): (típica, lím. sup.)
+# El primer par define la amplitud pico a pico.
+COMPONENTES = {
+    "N20": dict(pol=-1, ventana=(0.015, 0.025), lat_ref=(19.8, 23.0),
+                lat_paper=(19.81, 0.20 * 6)),
+    "P25": dict(pol=+1, ventana=(0.020, 0.032), lat_ref=(25.0, None)),
+    "N35": dict(pol=-1, ventana=(0.028, 0.042), lat_ref=(33.0, None)),
+    "P45": dict(pol=+1, ventana=(0.038, 0.055), lat_ref=(45.0, None)),
 }
 SEPARACION_MIN = 0.002   # s entre picos consecutivos
 
-# Amplitud pico a pico de los dos primeros componentes (IFCN): (media, límite inferior) en µV
-AMP_PICO_A_PICO_REF = {"tibial": (1.8, 0.5), "mediano": (3.2, 0.8)}
+# Amplitud pico a pico N20-P25 (IFCN): (media, límite inferior) en µV
+AMP_PICO_A_PICO_REF = (3.2, 0.8)
 
 # Control de calidad de la IFCN: dos repeticiones deben coincidir en latencia
-# (0,25 ms; 0,5 ms para el P39 tibial) y en amplitud (dentro del 20 %).
-TOLERANCIA_REPRODUCIBILIDAD = {"tibial": (0.5, 0.20), "mediano": (0.25, 0.20)}
-
-
-def componentes_de(nervio):
-    if nervio not in COMPONENTES_POR_NERVIO:
-        raise ValueError(f"nervio debe ser uno de {list(COMPONENTES_POR_NERVIO)}, no {nervio!r}.")
-    return COMPONENTES_POR_NERVIO[nervio]
+# (0,25 ms) y en amplitud (dentro del 20 %).
+TOLERANCIA_REPRODUCIBILIDAD = (0.25, 0.20)
 
 
 def medir_componentes(t, pe, componentes):
@@ -112,12 +80,12 @@ def medir_componentes(t, pe, componentes):
     return filas
 
 
-def comparar_con_teoria(t, pe, canales, nervio="tibial"):
+def comparar_con_teoria(t, pe, canales):
     """Tabla medido vs. teórico para todos los canales de un promedio.
-    pe: (n_canales, n_muestras) | nervio: "tibial" o "mediano".
+    pe: (n_canales, n_muestras).
     Devuelve un DataFrame con una fila por canal y componente, más la amplitud
-    pico a pico de los dos primeros componentes (P40-N50 o N20-P25)."""
-    componentes = componentes_de(nervio)
+    pico a pico de los dos primeros componentes (N20-P25)."""
+    componentes = COMPONENTES
     c1, c2 = list(componentes)[:2]
     filas = []
     for i, canal in enumerate(canales):
@@ -135,7 +103,7 @@ def comparar_con_teoria(t, pe, canales, nervio="tibial"):
                      else None)
             filas.append(f)
         pp = abs(amp[c1] - amp[c2])
-        amp_media, amp_lim = AMP_PICO_A_PICO_REF[nervio]
+        amp_media, amp_lim = AMP_PICO_A_PICO_REF
         en_borde = any(not f["valido"] for f in medidas if f["componente"] in (c1, c2))
         filas.append(dict(canal=canal, componente=f"{c1}-{c2} (pico a pico)", amp_uV=pp,
                           amp_ref_uV=amp_media, amp_lim_inf_uV=amp_lim,
@@ -147,23 +115,22 @@ def comparar_con_teoria(t, pe, canales, nervio="tibial"):
     return pd.DataFrame(filas)[cols]
 
 
-def tabla_metodos(t, pes, canales, nervio="tibial"):
+def tabla_metodos(t, pes, canales):
     """Compara los componentes entre métodos de promediado.
     pes: {metodo: pe (n_canales, n_muestras)}. Devuelve un DataFrame ancho:
     filas (canal, componente), columnas (lat_ms | amp_uV) x método."""
     partes = []
     for met, pe in pes.items():
-        df = comparar_con_teoria(t, pe, canales, nervio)
+        df = comparar_con_teoria(t, pe, canales)
         df["metodo"] = met
         partes.append(df)
     df = pd.concat(partes)
     return df.pivot_table(index=["canal", "componente"], columns="metodo",
                           values=["lat_ms", "amp_uV"], sort=False).round(2)
 
-def reproducibilidad(t, epocas, canales, nervio="tibial", modo="mitades"):
+def reproducibilidad(t, epocas, canales, modo="mitades"):
     """Control de calidad de la IFCN: las respuestas deben replicarse. Se divide el
-    ensamble en dos subpromedios y se compara el primer componente cortical (N20 o
-    P40) y la amplitud pico a pico de los dos primeros componentes.
+    ensamble en dos subpromedios y se compara el N20 y la amplitud pico a pico N20-P25.
     modo: "mitades" (primera vs. segunda mitad del registro: imita dos corridas
     sucesivas, sensible a cambios lentos) o "par_impar" (épocas alternadas).
     epocas: (n_epocas, n_canales, n_muestras), en orden temporal.
@@ -176,10 +143,10 @@ def reproducibilidad(t, epocas, canales, nervio="tibial", modo="mitades"):
         a, b = epocas[0::2], epocas[1::2]
     else:
         raise ValueError('modo debe ser "mitades" o "par_impar".')
-    tol_lat, tol_amp = TOLERANCIA_REPRODUCIBILIDAD[nervio]
-    c1 = list(componentes_de(nervio))[0]
-    ta = comparar_con_teoria(t, a.mean(axis=0), canales, nervio).set_index(["canal", "componente"])
-    tb = comparar_con_teoria(t, b.mean(axis=0), canales, nervio).set_index(["canal", "componente"])
+    tol_lat, tol_amp = TOLERANCIA_REPRODUCIBILIDAD
+    c1 = list(COMPONENTES)[0]
+    ta = comparar_con_teoria(t, a.mean(axis=0), canales).set_index(["canal", "componente"])
+    tb = comparar_con_teoria(t, b.mean(axis=0), canales).set_index(["canal", "componente"])
     filas = []
     for canal in canales:
         pp = [c for c in ta.loc[canal].index if "pico a pico" in c][0]

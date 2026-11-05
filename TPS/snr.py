@@ -56,7 +56,7 @@ import numpy as np
 from promedio import promedio_homogeneo, promedio_inhomogeneo
 
 METODOS = ("homogeneo", "n", "s", "sn")
-VENTANA_SENAL = (0.015, 0.080)  # s; mover a config.py
+VENTANA_SENAL = (0.015, 0.030)  # s; desde main.py se pasa la de config.py
 
 
 def _mascara(tiempos, ventana):
@@ -298,6 +298,79 @@ def snr_teorica_ajustada(n_valores, snr_db, se_db=None):
         return np.full_like(x, np.nan)
     c = np.sum(w[ok] * (y[ok] - x[ok])) / np.sum(w[ok])
     return c + x
+
+
+# --------------------------------------------------------------------------
+# SNR del paper del dataset (métrica complementaria)
+# --------------------------------------------------------------------------
+# Nierula et al. (2024), Métodos: "the SNR was quantified as the root-mean-square of
+# the signal (extracted in a time window of ±1 ms around the individual peak latency)
+# divided by the root-mean-square of the noise (extracted in the same time window
+# before the stimulus onset)". Se interpreta "la misma ventana antes del estímulo"
+# como la ventana espejada: [-lat - h, -lat + h]. Diferencias con la SNR principal:
+#   - el ruido se mide en la línea de base, no en la ventana del PEP;
+#   - el numerador es el RMS del promedio (señal + ruido), así que con N chico la
+#     SNR tiende a 0 dB (cociente 1) y no a -inf;
+#   - es un cociente de AMPLITUDES: se pasa a dB con 20·log10, de modo que con ruido
+#     independiente también crece ~10 dB/década.
+def snr_paper(pe, tiempos, lat, semiancho=0.001):
+    """SNR estilo paper de un promedio. pe: (C, N) o (N,) en V; lat: latencia del pico
+    (s), escalar o por canal. Devuelve dict con arrays (C,): cociente, snr_db,
+    rms_senal y rms_ruido (V)."""
+    pe = np.atleast_2d(pe)
+    lat = np.broadcast_to(np.asarray(lat, float), (pe.shape[0],))
+    rms_s, rms_r = np.full(pe.shape[0], np.nan), np.full(pe.shape[0], np.nan)
+    for c, l in enumerate(lat):
+        if not np.isfinite(l):
+            continue
+        m_s = (tiempos >= l - semiancho) & (tiempos <= l + semiancho)
+        m_r = (tiempos >= -l - semiancho) & (tiempos <= -l + semiancho)
+        if m_r.sum() < m_s.sum():
+            raise ValueError(f"La ventana de ruido [{-l - semiancho:.4f}, {-l + semiancho:.4f}] s "
+                             "se sale de la época: bajar TMIN.")
+        rms_s[c] = np.sqrt((pe[c, m_s] ** 2).mean())
+        rms_r[c] = np.sqrt((pe[c, m_r] ** 2).mean())
+    cociente = rms_s / rms_r
+    return dict(cociente=cociente, snr_db=20 * np.log10(cociente), rms_senal=rms_s,
+                rms_ruido=rms_r)
+
+
+def curva_snr_paper(epocas, tiempos, n_valores, lat, semiancho=0.001, n_bloques_jk=10):
+    """SNR estilo paper del promedio HOMOGÉNEO en función de N, con la latencia del pico
+    fija (la del promedio de todas las épocas, como en el paper). Igual que curva_snr:
+    bloques disjuntos de N épocas consecutivas, potencias promediadas antes del
+    logaritmo y error estándar por jackknife sobre los bloques; con menos de
+    MIN_BLOQUES_DISJUNTOS bloques, jackknife de n_bloques_jk sub-bloques dentro de las
+    primeras N épocas. Devuelve dict con arrays (len(n_valores), C): n, snr_db, se_db."""
+    M, C = epocas.shape[:2]
+    n_valores = np.asarray(n_valores, dtype=int)
+
+    def potencias(ep):
+        r = snr_paper(ep.mean(0), tiempos, lat, semiancho)
+        return r["rms_senal"] ** 2, r["rms_ruido"] ** 2
+
+    def db(ps, pr):
+        return 10 * np.log10(ps / pr)
+
+    snr = np.full((len(n_valores), C), np.nan)
+    se = np.full((len(n_valores), C), np.nan)
+    for i, n in enumerate(n_valores):
+        k = M // n
+        if k >= MIN_BLOQUES_DISJUNTOS:
+            pot = [potencias(epocas[b * n:(b + 1) * n]) for b in range(k)]
+            ps, pr = np.array([p[0] for p in pot]), np.array([p[1] for p in pot])
+            snr[i] = db(ps.mean(0), pr.mean(0))
+            reps = np.array([db(np.delete(ps, j, 0).mean(0), np.delete(pr, j, 0).mean(0))
+                             for j in range(k)])
+        else:
+            ep = epocas[:n]
+            snr[i] = db(*potencias(ep))
+            reps = np.array([db(*potencias(np.concatenate([ep[x] for j2, x in
+                                                           enumerate(_bloques(n, n_bloques_jk))
+                                                           if j2 != j])))
+                             for j in range(n_bloques_jk)])
+        se[i] = _jackknife(reps, snr[i])
+    return dict(n=n_valores, snr_db=snr, se_db=se)
 
 
 def snr_teorica_homogeneo(n_valores, snr_ref_db, n_ref):

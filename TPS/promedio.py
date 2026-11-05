@@ -82,7 +82,7 @@ def pesos_inhomogeneos(a, sigma2):
     return num / (a * num).sum(axis=0, keepdims=True)
 
 
-def promedio_inhomogeneo(epocas, modo, tiempos, ventana_senal=(0.015, 0.080), tam_bloque=50):
+def promedio_inhomogeneo(epocas, modo, tiempos, ventana_senal=(0.015, 0.030), tam_bloque=50):
     """Promedio pesado. modo: "s", "n" o "sn".
     ventana_senal: dónde está el PEP (s), para estimar amplitudes.
     tam_bloque: épocas por bloque para estimar amplitudes.

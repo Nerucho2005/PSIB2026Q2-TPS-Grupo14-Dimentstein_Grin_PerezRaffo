@@ -1,78 +1,90 @@
 # config.py
-# Parámetros compartidos del pipeline de PES (nervio tibial y mediano).
+# Parámetros del pipeline de PES del nervio MEDIANO (sub-001, ds004388).
+#
+# Objetivo del trabajo: cuantificar cómo mejora la relación señal/ruido (SNR) del
+# potencial evocado según el tipo de promediado (homogéneo e inhomogéneo "n", "s",
+# "sn") y según la cantidad de épocas promediadas (N).
+#
+# Bibliografía de las decisiones de diseño:
+#   [P]    Nierula et al. (2024), PLOS Biol 22(10): e3002828 (paper del dataset).
+#   [IFCN] Mauguière et al. (1999), Recommendations for the Practice of Clinical
+#          Neurophysiology, EEG Suppl. 52, cap. 2.4 "Somatosensory evoked potentials".
 from pathlib import Path
 
 # ---- Rutas ----
 RAIZ = Path(__file__).resolve().parent.parent      # raíz del repo (config.py está en TPS/)
 DIR_DATOS = RAIZ / "EEG-Paciente1"                 # datos, fuera de git
-DIR_RESULTADOS = RAIZ / "results"                  # figuras
-NERVIO = "mediano"                                  # "tibial" o "mediano"
+DIR_RESULTADOS = RAIZ / "results"                  # CSV y figuras exploratorias (fuera de git)
+DIR_FIGURAS = RAIZ / "informe" / "figuras"         # figuras finales del informe (graficos.py)
+
+# ---- Registro ----
+# [P] Experimento 1: mediano izquierdo en la muñeca, pulso de 0,2 ms apenas por encima
+# del umbral motor, intervalo entre estímulos 763 ± 50 ms (~1,3 Hz), 4 bloques de 500
+# estímulos por nervio. Se analiza el primer bloque del mediano de sub-001 (run-03).
+# [IFCN] 500 barridos alcanzan para los componentes corticales tempranos.
 SUJETO = "001"
-RUN = {"tibial": "02", "mediano": "03"}[NERVIO]    # run a analizar de cada nervio
-TAREA = {"tibial": "tibial", "mediano": "median"}[NERVIO]
-BASE = f"sub-{SUJETO}_task-{TAREA}_run-{RUN}"      # prefijo BIDS del run
+RUN = "03"
+BASE = f"sub-{SUJETO}_task-median_run-{RUN}"       # prefijo BIDS del run
 ARCHIVO_EEG = DIR_DATOS / f"{BASE}_eeg.set"        # el .fdt debe estar al lado
 ARCHIVO_EVENTOS = DIR_DATOS / f"{BASE}_events.tsv"
 
-# ---- Canales (referencia de adquisición: mastoides derecha, RM) ----
-# Mediano: CP3/CP4 ~ C3'/C4'. El N20 aparece solo en el CONTRALATERAL al brazo
-# estimulado; se dejan los dos para identificar el lado.
-CANALES = {"tibial": ["Cz", "CPz"], "mediano": ["CP3", "CP4"]}[NERVIO]
+# ---- Canal ----
+# [IFCN] el N20 se registra en la región parietal contralateral al brazo estimulado
+# (Pc, 2 cm detrás de C3/C4, ≈ CP3/CP4 del sistema 10-10). [P] el estímulo fue en el
+# brazo IZQUIERDO -> canal contralateral CP4. CP3 (ipsilateral) solo se usa para
+# verificar la lateralidad (figura 05).
+CANAL = "CP4"
+CANALES = [CANAL]
+CANALES_LATERALIDAD = ["CP3", "CP4"]
 
 # ---- Referencia ----
-# "RM" (adquisición), "Fz", "FPz", una lista de canales, "mastoides_enlazadas"
-# o "promedio" (64 canales de cuero cabelludo, la que usa el paper del dataset).
-# Montajes IFCN: tibial CPz-FPz, mediano CP3/CP4-Fz. Ver comparar_referencias.py.
-# Se usa Fz en ambos nervios: son los montajes clínicos de la IFCN (Mauguière et al.
-# 1999): mediano Pc-Fz (CP4-Fz) y tibial Cz'-Fz (CPz-Fz). Así los resultados son
-# comparables con las normas, y la latencia con el paper (que extrae los componentes
-# con CCA sobre referencia promedio, no en una derivación). Advertencias:
-#   - mediano: con Fz, CP3 muestra un "N20" espurio (P20 de Fz invertido) y los
-#     componentes > 25 ms se mezclan con el N30 frontal. La lateralidad se evalúa
-#     con REFERENCIA = "RM" o "mastoides_enlazadas".
-#   - tibial: con Fz la ganancia del promedio inhomogéneo casi desaparece; para la
-#     comparación de métodos, correr también con REFERENCIA = "RM".
-REFERENCIA = {"tibial": "Fz", "mediano": "Fz"}[NERVIO]
+# [IFCN] montaje cortical del mediano Pc-Fz: el P20 frontal tiene polaridad opuesta al
+# N20 parietal, así que la derivación CP4-Fz los suma. [P] el EEG se adquirió contra la
+# mastoides derecha (RM) y Fz se agregó a propósito para poder re-referenciar.
+# La lateralidad se evalúa con una referencia simétrica (mastoides enlazadas), porque
+# con Fz el P20 frontal invertido aparece en ambos hemisferios (falso "N20" en CP3).
+# Opciones: "RM", "Fz", "FPz", lista de canales, "mastoides_enlazadas", "promedio".
+REFERENCIA = "Fz"
+REFERENCIA_LATERALIDAD = "mastoides_enlazadas"
 
 # ---- Artefacto de estimulación (se interpola ANTES de filtrar) ----
+# [P] interpolan con PCHIP en ventanas individuales (~-1,8 a +4,4 ms). Acá se usa una
+# recta de -1 a +3 ms: el artefacto dura ~1,5 ms (chequeo_artefacto.py) y la ventana
+# queda fuera de la del PEP, así que la forma de la interpolación no lo afecta.
 INTERPOLAR_ARTEFACTO = True
-T_ARTEFACTO = (-0.001, 0.003)    # s respecto del estímulo; el artefacto dura ~1,5 ms
+T_ARTEFACTO = (-0.001, 0.003)    # s respecto del estímulo
 
-# ---- Filtrado (Butterworth pasabanda + notch, fase cero) ----
-F_BAJO = 5.0      # Hz
-F_ALTO = 100.0    # Hz
+# ---- Filtrado (Butterworth pasabanda orden 4 + notch, fase cero) ----
+# [P] EEG cortical: Butterworth de orden 4, fase cero, pasabanda 30-400 Hz y notch de
+# 48-53 Hz. Se adopta la misma banda para que los resultados sean comparables con el
+# paper. El pasaaltos de 30 Hz elimina la actividad de fondo lenta (alfa, deriva), que
+# es la mayor parte del ruido; el N20-P25 es un componente rápido y se conserva
+# (comparar_filtros.py). [IFCN] recomienda bandas más anchas para el registro clínico
+# (pasaaltos < 3 Hz, pasabajos > 2000 Hz) y el notch apagado: el filtro de fase cero
+# no corre latencias y el notch es angosto (Q = 30), así que se mantiene; ver
+# comparar_filtros.py para el efecto de cada banda.
+F_BAJO = 30.0     # Hz
+F_ALTO = 400.0    # Hz
 ORDEN = 4
 F_NOTCH = 50.0    # Hz (None desactiva el notch)
 Q_NOTCH = 30.0
 
 # ---- Segmentación ----
-TMIN = -0.020                                          # s, inicio de la época
-TMAX = {"tibial": 0.120, "mediano": 0.080}[NERVIO]     # s, fin de la época
+# La época empieza en -30 ms para que la línea de base contenga la ventana de ruido de
+# la SNR del paper (misma duración que la de señal, antes del estímulo).
+TMIN = -0.030     # s
+TMAX = 0.080      # s
 
 # ---- Promedios y SNR ----
-VENTANA_SENAL = {"tibial": (0.015, 0.080),     # s, donde está el PEP: P40...N75
-                 "mediano": (0.012, 0.060)}[NERVIO]   # N20...P45
-TAM_BLOQUE = 50                  # épocas por bloque para estimar amplitudes
-# N para la curva SNR vs. N (M se agrega solo). Se usan bloques DISJUNTOS de N épocas;
-# con N <= M/4 hay >= 4 bloques independientes. N = 10 se descartó: la SNR diverge.
+# Ventana del PEP donde se miden la SNR y las amplitudes de bloque: complejo N20-P25,
+# la respuesta cortical primaria que la IFCN usa para latencia y amplitud. Con Fz, los
+# componentes posteriores a ~25 ms se mezclan con el N30 frontal invertido.
+VENTANA_SENAL = (0.015, 0.030)   # s
+TAM_BLOQUE = 50                  # épocas por bloque para estimar amplitudes (modos s, sn)
+# N para la curva SNR vs. N (M se agrega solo). Bloques DISJUNTOS de N épocas
+# consecutivas; con N <= M/4 hay >= 4 bloques independientes.
 N_VALORES = [25, 50, 100, 125, 250]
 N_BLOQUES_JK = 10                # bloques del jackknife para el error estándar de la SNR
-# ---- Parámetros por nervio (para graficos.py, que procesa los dos nervios) ----
-DIR_FIGURAS = RAIZ / "informe" / "figuras"       # figuras finales del informe
-CANAL_PRINCIPAL = {"tibial": "CPz", "mediano": "CP4"}
-_RUN = {"tibial": "02", "mediano": "03"}
-_TAREA = {"tibial": "tibial", "mediano": "median"}
-_CANALES = {"tibial": ["Cz", "CPz"], "mediano": ["CP3", "CP4"]}
-_TMAX = {"tibial": 0.120, "mediano": 0.080}
-_VENTANA = {"tibial": (0.015, 0.080), "mediano": (0.012, 0.060)}
-_REFERENCIA = {"tibial": "Fz", "mediano": "Fz"}
-
-
-def parametros(nervio):
-    """Parámetros de un nervio cualquiera, independientes de NERVIO."""
-    base = f"sub-{SUJETO}_task-{_TAREA[nervio]}_run-{_RUN[nervio]}"
-    return dict(nervio=nervio, archivo_eeg=DIR_DATOS / f"{base}_eeg.set",
-                archivo_eventos=DIR_DATOS / f"{base}_events.tsv",
-                canales=list(_CANALES[nervio]), canal_principal=CANAL_PRINCIPAL[nervio],
-                tmax=_TMAX[nervio], ventana_senal=_VENTANA[nervio],
-                referencia=_REFERENCIA[nervio])
+# SNR del paper [P]: RMS en ±1 ms alrededor del pico del N20 / RMS en una ventana de
+# igual duración antes del estímulo (métrica complementaria).
+SEMIANCHO_SNR_PAPER = 0.001      # s

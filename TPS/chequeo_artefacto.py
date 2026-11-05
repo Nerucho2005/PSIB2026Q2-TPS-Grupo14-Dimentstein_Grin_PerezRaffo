@@ -83,7 +83,7 @@ def main():
               f"cociente {pico_art/pico_pep:6.1f} | |x| > {UMBRAL_SD}·sd(base) hasta "
               f"{fin*1e3:5.2f} ms")
         base = t < 0
-        print(f"      línea de base filtrada (rms, -20 a 0 ms): sin interpolar "
+        print(f"      línea de base filtrada (rms, {cfg.TMIN * 1e3:g} a 0 ms): sin interpolar "
               f"{np.sqrt((prom_f[i, base]**2).mean())*1e6:.3f} µV | interpolada "
               f"{np.sqrt((prom_fi[i, base]**2).mean())*1e6:.3f} µV")
 

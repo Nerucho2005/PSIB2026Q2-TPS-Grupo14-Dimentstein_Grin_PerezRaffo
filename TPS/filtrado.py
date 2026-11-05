@@ -1,13 +1,13 @@
 # filtrado.py
 # Carga, selección de canales, re-referencia, interpolación del artefacto de
-# estímulo y filtrado (fase cero) del EEG continuo para PES (tibial y mediano).
+# estímulo y filtrado (fase cero) del EEG continuo para PES del nervio mediano.
 #
 # Referencia: el EEG del dataset está referido a la mastoides derecha (RM), que no
 # figura como canal. Cada canal es V_canal - V_RM, así que la actividad que capte
 # RM se resta de todos los canales. Opciones (parámetro `referencia`):
 #   "RM" o None            -> la de adquisición, sin cambios.
 #   "Fz", "FPz" o [lista]  -> se resta un canal o el promedio de varios.
-#                             Montajes IFCN: tibial CPz-FPz, mediano CP3/CP4-Fz.
+#                             Montaje IFCN del mediano: Pc-Fz (CP4-Fz).
 #   "mastoides_enlazadas"  -> (LM + RM)/2, simétrica. Como RM vale 0 en los datos,
 #                             equivale a restar LM/2 a cada canal.
 # La re-referencia necesita cargar también el/los canales de referencia, por eso
@@ -37,10 +37,10 @@
 # estímulo (interpolar_artefacto) ANTES de filtrar, para que el filtro de fase
 # cero no lo disperse hacia la línea de base ni hacia la ventana del PEP.
 #
-# Sobre el corte inferior de 5 Hz: en el PESS tibial el componente cortical principal (P37)
-# dura ~10-20 ms, por lo que su energía se concentra por encima de ~15-20 Hz y un pasaaltos de
-# 5 Hz lo preserva. Pero puede recortar componentes lentos posteriores (N45 y ondas tardías);
-# si son de interés, comparar con 1-3 Hz.
+# Banda 30-400 Hz (la del paper del dataset, Nierula et al. 2024): el complejo N20-P25 es
+# rápido (~5 ms entre picos) y su energía está por encima de ~30 Hz, mientras que la mayor
+# parte del EEG de fondo (alfa, deriva) está por debajo. Atenúa los componentes lentos
+# posteriores (N35, P45). Ver comparar_filtros.py.
 from __future__ import annotations
 
 import argparse
@@ -55,8 +55,8 @@ from scipy.signal import butter, iirnotch, sosfiltfilt, tf2sos
 
 log = logging.getLogger(__name__)
 
-CANALES_POR_DEFECTO = ["Cz", "CPz"]  # añadir "Fz" o "Fpz" solo si el análisis lo requiere
-ARCHIVO_POR_DEFECTO = "sub-001_task-tibial_run-02_eeg.set"  # el .fdt debe estar al lado
+CANALES_POR_DEFECTO = ["CP4"]  # contralateral al mediano izquierdo estimulado
+ARCHIVO_POR_DEFECTO = "sub-001_task-median_run-03_eeg.set"  # el .fdt debe estar al lado
 
 
 @dataclass
@@ -264,7 +264,7 @@ def graficar_comparacion(crudo, filtrado, inicio_s=0.0, duracion_s=5.0):
     plt.show()
 
 
-def preprocesar_eeg(registro="EEG-Paciente1", canales=None, f_bajo=5.0, f_alto=100.0, orden=4,
+def preprocesar_eeg(registro="EEG-Paciente1", canales=None, f_bajo=30.0, f_alto=400.0, orden=4,
                     f_notch=50.0, q_notch=30.0, graficar=False, ventana_grafico=(0.0, 5.0),
                     muestras_estimulo=None, t_artefacto=(-0.001, 0.003), referencia=None):
     # Selecciona canales, interpola el artefacto de estímulo y filtra el EEG continuo
@@ -316,12 +316,12 @@ def preprocesar_eeg(registro="EEG-Paciente1", canales=None, f_bajo=5.0, f_alto=1
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(message)s")
-    p = argparse.ArgumentParser(description="Preprocesamiento de EEG para PESS tibial.")
+    p = argparse.ArgumentParser(description="Preprocesamiento de EEG para PES del nervio mediano.")
     p.add_argument("ruta", nargs="?", default="EEG-Paciente1",
                    help=f"Carpeta que contiene {ARCHIVO_POR_DEFECTO} o ruta directa a un .set")
     p.add_argument("--canales", nargs="+", default=CANALES_POR_DEFECTO)
-    p.add_argument("--f-bajo", type=float, default=5.0)
-    p.add_argument("--f-alto", type=float, default=100.0)
+    p.add_argument("--f-bajo", type=float, default=30.0)
+    p.add_argument("--f-alto", type=float, default=400.0)
     p.add_argument("--orden", type=int, default=4)
     p.add_argument("--notch", type=float, default=50.0)
     p.add_argument("--graficar", action="store_true", help="Comparación crudo vs. filtrado")

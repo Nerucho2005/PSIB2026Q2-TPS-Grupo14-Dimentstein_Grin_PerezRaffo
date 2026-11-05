@@ -5,7 +5,7 @@
 #
 # Uso desde main.py:
 #     from segmentacion_pep import cargar_eventos, segmentar_epocas
-#     eventos = cargar_eventos("EEG-Paciente1/sub-001_task-tibial_run-02_events.tsv")
+#     eventos = cargar_eventos("EEG-Paciente1/sub-001_task-median_run-03_events.tsv")
 #     epocas, tiempos = segmentar_epocas(eeg_filtrado, eventos)
 #     # epocas: (n_epocas, n_canales, n_muestras) | tiempos: en segundos (0 = estímulo)
 
@@ -13,12 +13,12 @@ import numpy as np
 import pandas as pd
 
 # Ruta del archivo de eventos
-RUTA_EVENTOS = "EEG-Paciente1/sub-001_task-tibial_run-02_events.tsv"
+RUTA_EVENTOS = "EEG-Paciente1/sub-001_task-median_run-03_events.tsv"
 
 # Ventana alrededor del estímulo (segundos). Modificar según los componentes
-# a estudiar (en PESS tibial: P37/P40, N45/N50, P60).
-TMIN = -0.020
-TMAX = 0.120
+# a estudiar (mediano: N20, P25, N35, P45). Desde main.py se pasan las de config.py.
+TMIN = -0.030
+TMAX = 0.080
 
 
 # Lee el archivo .tsv de eventos y deja solo los estímulos, ordenados por tiempo.
