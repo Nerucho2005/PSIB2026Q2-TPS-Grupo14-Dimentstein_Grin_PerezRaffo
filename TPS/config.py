@@ -13,7 +13,6 @@ from pathlib import Path
 
 # ---- Rutas ----
 RAIZ = Path(__file__).resolve().parent.parent      # raíz del repo (config.py está en TPS/)
-DIR_DATOS = RAIZ / "EEG-Paciente1"                 # datos, fuera de git
 DIR_RESULTADOS = RAIZ / "results"                  # CSV y figuras exploratorias (fuera de git)
 DIR_FIGURAS = RAIZ / "informe" / "figuras"         # figuras finales del informe (graficos.py)
 
@@ -22,8 +21,10 @@ DIR_FIGURAS = RAIZ / "informe" / "figuras"         # figuras finales del informe
 # del umbral motor, intervalo entre estímulos 763 ± 50 ms (~1,3 Hz), 4 bloques de 500
 # estímulos por nervio. Se analiza el primer bloque del mediano de sub-001 (run-03).
 # [IFCN] 500 barridos alcanzan para los componentes corticales tempranos.
-SUJETO = "001"
-RUN = "03"
+SUJETO = "004"
+RUN = "02"
+DIR_DATOS = RAIZ / f"EEG-Paciente{int(SUJETO)}" # datos, fuera de git
+
 BASE = f"sub-{SUJETO}_task-median_run-{RUN}"       # prefijo BIDS del run
 ARCHIVO_EEG = DIR_DATOS / f"{BASE}_eeg.set"        # el .fdt debe estar al lado
 ARCHIVO_EVENTOS = DIR_DATOS / f"{BASE}_events.tsv"

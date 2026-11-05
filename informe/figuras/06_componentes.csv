@@ -1,0 +1,6 @@
+canal,componente,lat_ms,lat_ref_ms,dif_ms,lat_lim_sup_ms,dentro_rango,lat_paper_ms,sd_paper_ms,z_paper,amp_uV,amp_ref_uV,amp_lim_inf_uV,borde,polaridad_ok,valido
+CP4,N20,19.5,19.8,-0.3000000000000007,23.0,True,19.81,1.2000000000000002,-0.25833333333333225,-4.911380265919293,,,False,True,True
+CP4,P25,25.2,25.0,0.1999999999999993,,,,,,2.351518095933147,,,False,True,True
+CP4,N35,33.2,33.0,0.20000000000000284,,,,,,-0.6319805365040012,,,False,True,True
+CP4,P45,50.9,45.0,5.899999999999999,,,,,,0.08588500313057405,,,False,True,True
+CP4,N20-P25 (pico a pico),,,,,True,,,,7.26289836185244,3.2,0.8,,,

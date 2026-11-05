@@ -39,8 +39,8 @@ def main():
     epocas, tiempos, canales = cargar_epocas()
     M = epocas.shape[0]
     ref = nombre_referencia(cfg.REFERENCIA)
-    sufijo = f"{cfg.CANAL}-{ref}_{cfg.F_BAJO:g}-{cfg.F_ALTO:g}Hz"
-
+    sufijo = f"sub-{cfg.SUJETO}_{cfg.CANAL}-{ref}_{cfg.F_BAJO:g}-{cfg.F_ALTO:g}Hz"
+   
     # 1. Promedios y SNR con todas las épocas, con error estándar (jackknife por bloques)
     r = snr_todos_los_metodos(epocas, tiempos, cfg.VENTANA_SENAL, cfg.TAM_BLOQUE)
     jk = jackknife_snr(epocas, tiempos, METODOS, cfg.N_BLOQUES_JK, cfg.VENTANA_SENAL,
