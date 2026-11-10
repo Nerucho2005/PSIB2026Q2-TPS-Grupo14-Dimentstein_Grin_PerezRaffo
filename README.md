@@ -79,7 +79,8 @@ PSIB2026Q2-TPS-Grupo14-Dimentstein_Grin_PerezRaffo/
 │   ├── chequeo_artefacto.py   # verificación: artefacto e interpolación
 │   ├── comparar_filtros.py    # verificación: bandas IFCN / anterior / paper
 │   ├── comparar_referencias.py# verificación: RM, Fz, mastoides enlazadas, promedio
-│   └── graficos.py            # 10 figuras finales + CSV en informe/figuras/
+│   ├── graficos.py            # 10 figuras finales (sub-001) + CSV en informe/figuras/
+│   └── grupal.py              # análisis de los 10 sujetos: figuras 11-13 + CSV
 ├── results/                   # salidas de los scripts (FUERA de git)
 ├── informe/figuras/           # figuras finales (graficos.py)
 ├── requirements.txt
@@ -95,6 +96,7 @@ python TPS/main.py                  # pipeline completo: SNR, diferencias, curva
 python TPS/comparar_filtros.py      # justificación de la banda
 python TPS/comparar_referencias.py  # justificación de la referencia
 python TPS/chequeo_artefacto.py     # justificación de la interpolación
+python TPS/grupal.py                # análisis grupal (lee results/; antes correr main.py con cada sujeto)
 python TPS/graficos.py              # figuras del informe (agregar --sin-promedio para omitir la ref. promedio, la más lenta)
 ```
 
@@ -166,6 +168,33 @@ Cómo se estiman los parámetros:
 Además guarda los CSV `03_filtros`, `04_referencias`, `06_componentes`, `07_snr_metodos` y `08_diferencias_metodos`.
 
 ## 7. Resultados
+
+### Grupo: sub-001 a sub-010 (primer run del mediano de cada uno, M = 500)
+
+Se analizan 10 de los 40 sujetos por tiempo de descarga y espacio en disco (~1,8 GB por run). Para cada sujeto se cambian `SUJETO` y `RUN` en `config.py`; `DIR_DATOS` es `EEG-Paciente{n}`. Las descargas se hacen desde el espejo S3 de OpenNeuro con `curl`, porque la API de openneuro-py daba timeout.
+
+| Medida | Media [IC 95 % entre sujetos] | Prueba |
+|---|---|---|
+| Ganancia de `n` sobre el homogéneo | **+1,40 dB [0,43; 2,36]**, 9/10 positivos | Wilcoxon p = 0,004 |
+| Ídem sin sub-009 | +1,04 dB [0,42; 1,67] | p = 0,008 |
+| Ganancia de `s` | −0,07 dB [−0,52; 0,38] | p = 0,70 |
+| Ganancia de `sn` | +1,37 dB [0,41; 2,33] | p = 0,004 |
+| Pendiente del homogéneo | 10,2 dB/década (no difiere de 10) | p = 0,77 |
+| SNR del homogéneo | 22,5 dB [19,3; 25,6] | — |
+| N20 (9 sujetos confiables) | 19,4 ± 1,1 ms; paper 19,81 ± 1,2 ms | diferencia no significativa (p = 0,24) |
+
+**Interpretación:**
+- **Ganancia de `n`:** es chica pero sistemática. Solo es significativa individualmente en sub-009, porque el jackknife dentro de un registro tiene poca potencia para ~1 dB.
+- **`s`:** no aporta, porque no hay habituación.
+- **Curva SNR vs. N:** sigue la teoría.
+
+**Sujetos atípicos:**
+- **sub-009:** las primeras ~100 épocas son muy ruidosas (σ² de hasta ~430 µV²); ahí `n` gana +4,6 dB. Su N20 es débil (−0,7 µV) y no pasa la reproducibilidad, así que se excluye de la comparación de latencias (`SUJETOS_SENSIBILIDAD` en `grupal.py`).
+- **sub-008:** una sola época con σ² ≈ 550 µV² distorsiona la curva del homogéneo (pendiente 13,4).
+- **sub-004:** no cumple la reproducibilidad de latencia (0,6 ms).
+- **sub-003 y sub-004:** el P25 cae en el borde de su ventana.
+
+### sub-001 (figuras 01–10)
 
 **Hay que volver a correr todo con la configuración nueva** (30–400 Hz, ventana de 15–30 ms, épocas desde −30 ms). Los resultados anteriores, con 5–100 Hz y una ventana de 12–60 ms, son **obsoletos**. Como referencia, con Fz daban:
 - ganancia de `n` de +3,0 dB [0,15; 5,85];
