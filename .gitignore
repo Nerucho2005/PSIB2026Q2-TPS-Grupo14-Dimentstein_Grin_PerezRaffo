@@ -10,4 +10,5 @@ data/raw/
 results/
 # Archivos compilados de Python
 __pycache__/
-*.py[cod]
+*.py[cod]EEG-Paciente*/
+.DS_Store
