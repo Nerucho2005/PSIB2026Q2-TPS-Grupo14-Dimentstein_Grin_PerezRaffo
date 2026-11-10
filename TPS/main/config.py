@@ -27,10 +27,25 @@ DIR_FIGURAS = RAIZ / "informe" / "figuras"         # figuras finales del informe
 #   run-03: sub-001, 002, 005, 007, 009, 010    run-02: sub-003, 004, 006, 008
 SUJETO = "001"
 RUN = "03"
-DIR_DATOS = RAIZ / f"EEG-Paciente{int(SUJETO)}"    # datos del sujeto (fuera de git)
-BASE = f"sub-{SUJETO}_task-median_run-{RUN}"       # prefijo BIDS del run
-ARCHIVO_EEG = DIR_DATOS / f"{BASE}_eeg.set"        # el .fdt debe estar al lado
-ARCHIVO_EVENTOS = DIR_DATOS / f"{BASE}_events.tsv"
+
+
+def rutas_sujeto(sujeto, run):
+    """(carpeta, prefijo BIDS, .set, _events.tsv) de un sujeto y run."""
+    carpeta = RAIZ / f"EEG-Paciente{int(sujeto)}"            # datos del sujeto (fuera de git)
+    base = f"sub-{sujeto}_task-median_run-{run}"             # prefijo BIDS del run
+    return carpeta, base, carpeta / f"{base}_eeg.set", carpeta / f"{base}_events.tsv"
+
+
+DIR_DATOS, BASE, ARCHIVO_EEG, ARCHIVO_EVENTOS = rutas_sujeto(SUJETO, RUN)   # el .fdt va al lado del .set
+
+
+def usar_sujeto(sujeto, run):
+    """Cambia el sujeto analizado sin editar este archivo (lo usa la interfaz). Los
+    módulos leen cfg.ARCHIVO_EEG, etc. al momento de usarlos, así que el cambio vale
+    para todo el pipeline."""
+    global SUJETO, RUN, DIR_DATOS, BASE, ARCHIVO_EEG, ARCHIVO_EVENTOS
+    SUJETO, RUN = sujeto, run
+    DIR_DATOS, BASE, ARCHIVO_EEG, ARCHIVO_EVENTOS = rutas_sujeto(sujeto, run)
 
 # ---- Canal ----
 # [IFCN] el N20 se registra en la región parietal contralateral al brazo estimulado

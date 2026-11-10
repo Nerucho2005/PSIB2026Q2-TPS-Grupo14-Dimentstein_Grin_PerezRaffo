@@ -364,8 +364,11 @@ def fig_reproducibilidad(t, pe1, pe2, fila):
 # --------------------------------------------------------------------------
 # 3. Orquestador: calcula lo necesario con el pipeline y genera las figuras
 # --------------------------------------------------------------------------
-def calcular(incluir_promedio=True):
-    """Carga el registro y calcula todo lo que necesitan las figuras."""
+def calcular(incluir_promedio=True, avance=None):
+    """Carga el registro y calcula todo lo que necesitan las figuras.
+    avance(fraccion, texto): aviso de progreso por etapa (lo usa la interfaz; puede
+    lanzar una excepción para cancelar entre etapas). Por defecto imprime la etapa."""
+    avance = avance or (lambda frac, texto: print(texto))
     from chequeo_artefacto import N_EPOCAS_GRAFICO, T_BASE, epocar, restar_base
     from comparar_filtros import BANDAS, analizar_banda
     from comparar_referencias import REFERENCIAS, epocas_por_referencia, resumen_referencia
@@ -382,7 +385,7 @@ def calcular(incluir_promedio=True):
     muestras = eventos["sample"].to_numpy().astype(int)
 
     # Decisiones 1 y 2: espectro, artefacto y bandas (CP4-Fz sin filtrar, una carga)
-    print(f"Cargando {cfg.ARCHIVO_EEG.name} ({cfg.CANAL}–{cfg.REFERENCIA})")
+    avance(0.00, f"Cargando {cfg.ARCHIVO_EEG.name} ({cfg.CANAL}–{cfg.REFERENCIA})")
     raw = cargar_y_referenciar(cfg.ARCHIVO_EEG, cfg.CANALES, cfg.REFERENCIA)
     fs, x_sin = raw.info["sfreq"], raw.get_data()
     x_int = interpolar_artefacto(x_sin, muestras, fs, *cfg.T_ARTEFACTO)
@@ -393,7 +396,7 @@ def calcular(incluir_promedio=True):
     _, psd_f = welch(x_fil[0], fs=fs, nperseg=int(fs))
     R["psd"] = dict(f=f, psd_crudo=psd_c, psd_filtrado=psd_f)
 
-    print("Artefacto de estímulo")
+    avance(0.15, "Artefacto de estímulo")
     ep_c, t = epocar(x_sin, muestras, fs, cfg.TMIN, cfg.TMAX)
     ep_f, _ = epocar(filtrar(x_sin, filtros, padlen), muestras, fs, cfg.TMIN, cfg.TMAX)
     ep_i, _ = epocar(x_fil, muestras, fs, cfg.TMIN, cfg.TMAX)
@@ -404,7 +407,7 @@ def calcular(incluir_promedio=True):
                           prom_interpolado=restar_base(ep_i, t, (cfg.TMIN, 0)).mean(0)[0])
     del ep_c, ep_f, ep_i, x_fil
 
-    print("Bandas de filtrado")
+    avance(0.22, "Bandas de filtrado")
     pes_b, filas_b = {}, []
     for nombre, (fb, fa) in BANDAS.items():
         t_b, pes_b[nombre], fila = analizar_banda(x_int, fs, eventos, fb, fa)
@@ -413,7 +416,7 @@ def calcular(incluir_promedio=True):
     del x_sin, x_int
 
     # Decisiones 3 y 4: referencias y lateralidad (una carga con CP4, CP3 y referencias)
-    print("Referencias y lateralidad")
+    avance(0.35, "Referencias y lateralidad")
     refs = [r for r in REFERENCIAS if incluir_promedio or r != PROMEDIO]
     canales = [cfg.CANAL] + [c for c in cfg.CANALES_LATERALIDAD if c != cfg.CANAL]
     ep_ref = epocas_por_referencia(refs, canales)
@@ -433,12 +436,13 @@ def calcular(incluir_promedio=True):
                             lat_n20=n20_l["lat_ms"] if n20_l["valido"] else None)
 
     # Resultados: análisis completo con la referencia elegida (CP4-Fz)
-    print("Promedios, SNR y curvas (referencia elegida)")
+    avance(0.55, "Promedios, SNR y curvas (referencia elegida)")
     ep, t = ep_ref[nombre_referencia(cfg.REFERENCIA)]
     ep = ep[:, :1]
     M = ep.shape[0]
     del ep_ref
     r = snr_todos_los_metodos(ep, t, cfg.VENTANA_SENAL, cfg.TAM_BLOQUE)
+    avance(0.62, "SNR con incertidumbre (jackknife)")
     jk = jackknife_snr(ep, t, METODOS, cfg.N_BLOQUES_JK, cfg.VENTANA_SENAL, cfg.TAM_BLOQUE)
     difs = []
     for met in METODOS[1:]:
@@ -450,11 +454,13 @@ def calcular(incluir_promedio=True):
     lat_n20 = n20["lat_ms"] / 1e3 if n20["valido"] else np.nan
     n_valores = sorted({n for n in cfg.N_VALORES if n < M} | {M})
     curvas, pend = {}, {}
-    for met in METODOS:
+    for k, met in enumerate(METODOS):
+        avance(0.72 + 0.05 * k, f"Curva SNR vs. N ({NOMBRE_METODO[met]})")
         c = curva_snr(ep, t, n_valores, met, cfg.VENTANA_SENAL, cfg.TAM_BLOQUE,
                       n_bloques_jk=cfg.N_BLOQUES_JK)
         curvas[met] = dict(n=c["n"], snr_db=c["snr_db"][:, 0], se_db=c["se_db"][:, 0])
         pend[met] = ajustar_pendiente(c["n"], c["snr_db"][:, 0], c["se_db"][:, 0])[1:]
+    avance(0.93, "SNR del paper y reproducibilidad")
     cp = curva_snr_paper(ep, t, n_valores, lat_n20, cfg.SEMIANCHO_SNR_PAPER, cfg.N_BLOQUES_JK)
     cp = dict(n=cp["n"], snr_db=cp["snr_db"][:, 0], se_db=cp["se_db"][:, 0])
     h = curvas["homogeneo"]
@@ -468,7 +474,9 @@ def calcular(incluir_promedio=True):
         recta_paper=(cp["n"], snr_teorica_ajustada(cp["n"], cp["snr_db"], cp["se_db"])),
         sigma2=varianza_ruido(ep, np.ones(ep.shape[:2]))[:, 0],
         pesos={m: r[m]["pesos"][:, 0] for m in METODOS[1:]},
-        pe1=ep[:M // 2].mean(0)[0], pe2=ep[M // 2:].mean(0)[0], reproducibilidad=rep.iloc[0])
+        pe1=ep[:M // 2].mean(0)[0], pe2=ep[M // 2:].mean(0)[0], reproducibilidad=rep.iloc[0],
+        tabla_reproducibilidad=rep)
+    avance(1.00, "Listo")
     return R
 
 

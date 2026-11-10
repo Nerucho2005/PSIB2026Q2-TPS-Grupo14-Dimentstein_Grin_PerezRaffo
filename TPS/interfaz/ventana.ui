@@ -1,0 +1,618 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1280</width>
+    <height>820</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>PES del nervio mediano — SNR según el promediado</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="layoutCentral">
+    <item>
+     <layout class="QHBoxLayout" name="layoutSuperior">
+      <item>
+       <widget class="QWidget" name="panelControles" native="true">
+        <property name="minimumSize">
+         <size>
+          <width>290</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>330</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <layout class="QVBoxLayout" name="layoutPanel">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QGroupBox" name="grupoPaciente">
+           <property name="title">
+            <string>1. Paciente</string>
+           </property>
+           <layout class="QFormLayout" name="formPaciente">
+            <item row="0" column="0">
+             <widget class="QLabel" name="labelPaciente">
+              <property name="text">
+               <string>Paciente</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QComboBox" name="comboPaciente">
+              <property name="toolTip">
+               <string>Sujetos del dataset ds004388 (OpenNeuro)</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="labelRun">
+              <property name="text">
+               <string>Run</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QLabel" name="lblRun">
+              <property name="text">
+               <string>-</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QLabel" name="labelDatos">
+              <property name="text">
+               <string>Datos</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="QLabel" name="lblDatos">
+              <property name="text">
+               <string>(sin verificar)</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="grupoOpciones">
+           <property name="title">
+            <string>2. Opciones</string>
+           </property>
+           <layout class="QVBoxLayout" name="layoutOpciones">
+            <item>
+             <widget class="QCheckBox" name="chkPromedio">
+              <property name="text">
+               <string>Incluir referencia promedio (lento)</string>
+              </property>
+              <property name="checked">
+               <bool>false</bool>
+              </property>
+              <property name="toolTip">
+               <string>Agrega la referencia promedio a la figura de referencias</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="chkCache">
+              <property name="text">
+               <string>Usar resultados guardados si existen</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+              <property name="toolTip">
+               <string>Si el paciente ya se analizó con los mismos parámetros, no se descarga ni se recalcula</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="labelBorrado">
+              <property name="text">
+               <string>Datos descargados:</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="comboBorrado">
+              <item>
+               <property name="text">
+                <string>Eliminar al terminar el análisis</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Eliminar al cambiar de paciente</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Conservar</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="grupoAnalisis">
+           <property name="title">
+            <string>3. Análisis</string>
+           </property>
+           <layout class="QVBoxLayout" name="layoutAnalisis">
+            <item>
+             <widget class="QPushButton" name="btnProcesar">
+              <property name="text">
+               <string>Descargar y analizar</string>
+              </property>
+              <property name="toolTip">
+               <string>Descarga los runs que falten, filtra, promedia y calcula la SNR</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="btnCancelar">
+              <property name="text">
+               <string>Cancelar</string>
+              </property>
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="btnBorrarDatos">
+              <property name="text">
+               <string>Eliminar datos descargados</string>
+              </property>
+              <property name="toolTip">
+               <string>Borra solo las carpetas que descargó la interfaz</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="grupoResultados">
+           <property name="title">
+            <string>4. Resultados</string>
+           </property>
+           <layout class="QVBoxLayout" name="layoutResultados">
+            <item>
+             <widget class="QLabel" name="lblResumen">
+              <property name="text">
+               <string>(sin resultados)</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="btnGuardarFiguras">
+              <property name="text">
+               <string>Guardar figuras...</string>
+              </property>
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="btnExportar">
+              <property name="text">
+               <string>Exportar CSV...</string>
+              </property>
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <spacer name="spacerPanel">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QTabWidget" name="tabsGraficos">
+        <property name="currentIndex">
+         <number>0</number>
+        </property>
+        <widget class="QWidget" name="tabPSD">
+         <attribute name="title">
+          <string>1. Espectro</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="layoutPSD">
+          <item>
+           <widget class="QLabel" name="lblVacioPSD">
+            <property name="text">
+             <string>Todavía no hay resultados.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tabArtefacto">
+         <attribute name="title">
+          <string>2. Artefacto</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="layoutArtefacto">
+          <item>
+           <widget class="QLabel" name="lblVacioArtefacto">
+            <property name="text">
+             <string>Todavía no hay resultados.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tabFiltros">
+         <attribute name="title">
+          <string>3. Filtros</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="layoutFiltros">
+          <item>
+           <widget class="QLabel" name="lblVacioFiltros">
+            <property name="text">
+             <string>Todavía no hay resultados.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tabReferencias">
+         <attribute name="title">
+          <string>4. Referencias</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="layoutReferencias">
+          <item>
+           <widget class="QLabel" name="lblVacioReferencias">
+            <property name="text">
+             <string>Todavía no hay resultados.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tabLateralidad">
+         <attribute name="title">
+          <string>5. Lateralidad</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="layoutLateralidad">
+          <item>
+           <widget class="QLabel" name="lblVacioLateralidad">
+            <property name="text">
+             <string>Todavía no hay resultados.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tabPEP">
+         <attribute name="title">
+          <string>6. PEP por método</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="layoutPEP">
+          <item>
+           <widget class="QLabel" name="lblVacioPEP">
+            <property name="text">
+             <string>Todavía no hay resultados.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tabCurvas">
+         <attribute name="title">
+          <string>7. SNR vs. N</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="layoutCurvas">
+          <item>
+           <widget class="QLabel" name="lblVacioCurvas">
+            <property name="text">
+             <string>Todavía no hay resultados.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tabDiferencias">
+         <attribute name="title">
+          <string>8. Dif. de SNR</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="layoutDiferencias">
+          <item>
+           <widget class="QLabel" name="lblVacioDiferencias">
+            <property name="text">
+             <string>Todavía no hay resultados.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tabPesos">
+         <attribute name="title">
+          <string>9. Pesos</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="layoutPesos">
+          <item>
+           <widget class="QLabel" name="lblVacioPesos">
+            <property name="text">
+             <string>Todavía no hay resultados.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tabReproducibilidad">
+         <attribute name="title">
+          <string>10. Reproducib.</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="layoutReproducibilidad">
+          <item>
+           <widget class="QLabel" name="lblVacioReproducibilidad">
+            <property name="text">
+             <string>Todavía no hay resultados.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tabMetricas">
+         <attribute name="title">
+          <string>Métricas</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="layoutTabMetricas">
+          <item>
+           <widget class="QSplitter" name="splitterMetricas">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <widget class="QGroupBox" name="grupoComponentes">
+             <property name="title">
+              <string>Componentes del PEP (promedio homogéneo, CP4–Fz)</string>
+             </property>
+             <layout class="QVBoxLayout" name="layoutComponentes">
+              <item>
+               <widget class="QTableWidget" name="tablaComponentes">
+                <property name="editTriggers">
+                 <set>QAbstractItemView::NoEditTriggers</set>
+                </property>
+                <property name="alternatingRowColors">
+                 <bool>true</bool>
+                </property>
+                <attribute name="horizontalHeaderStretchLastSection">
+                 <bool>true</bool>
+                </attribute>
+                <attribute name="verticalHeaderVisible">
+                 <bool>false</bool>
+                </attribute>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QGroupBox" name="grupoSNR">
+             <property name="title">
+              <string>SNR por método (± error estándar jackknife) y diferencia con el homogéneo</string>
+             </property>
+             <layout class="QVBoxLayout" name="layoutSNR">
+              <item>
+               <widget class="QTableWidget" name="tablaSNR">
+                <property name="editTriggers">
+                 <set>QAbstractItemView::NoEditTriggers</set>
+                </property>
+                <property name="alternatingRowColors">
+                 <bool>true</bool>
+                </property>
+                <attribute name="horizontalHeaderStretchLastSection">
+                 <bool>true</bool>
+                </attribute>
+                <attribute name="verticalHeaderVisible">
+                 <bool>false</bool>
+                </attribute>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QGroupBox" name="grupoReproducibilidad">
+             <property name="title">
+              <string>Reproducibilidad (primera vs. segunda mitad, criterio IFCN)</string>
+             </property>
+             <layout class="QVBoxLayout" name="layoutTablaRep">
+              <item>
+               <widget class="QTableWidget" name="tablaReproducibilidad">
+                <property name="editTriggers">
+                 <set>QAbstractItemView::NoEditTriggers</set>
+                </property>
+                <property name="alternatingRowColors">
+                 <bool>true</bool>
+                </property>
+                <attribute name="horizontalHeaderStretchLastSection">
+                 <bool>true</bool>
+                </attribute>
+                <attribute name="verticalHeaderVisible">
+                 <bool>false</bool>
+                </attribute>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="QPlainTextEdit" name="txtLog">
+      <property name="maximumSize">
+       <size>
+        <width>16777215</width>
+        <height>110</height>
+       </size>
+      </property>
+      <property name="readOnly">
+       <bool>true</bool>
+      </property>
+      <property name="placeholderText">
+       <string>Registro de eventos...</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QProgressBar" name="barraProgreso">
+      <property name="value">
+       <number>0</number>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1280</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuArchivo">
+    <property name="title">
+     <string>Archivo</string>
+    </property>
+    <addaction name="actionProcesar"/>
+    <addaction name="actionGuardarFiguras"/>
+    <addaction name="actionExportar"/>
+    <addaction name="separator"/>
+    <addaction name="actionSalir"/>
+   </widget>
+   <widget class="QMenu" name="menuAyuda">
+    <property name="title">
+     <string>Ayuda</string>
+    </property>
+    <addaction name="actionAcercaDe"/>
+   </widget>
+   <addaction name="menuArchivo"/>
+   <addaction name="menuAyuda"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionProcesar">
+   <property name="text">
+    <string>Descargar y analizar</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+R</string>
+   </property>
+  </action>
+  <action name="actionGuardarFiguras">
+   <property name="text">
+    <string>Guardar figuras...</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="actionExportar">
+   <property name="text">
+    <string>Exportar CSV...</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+E</string>
+   </property>
+  </action>
+  <action name="actionSalir">
+   <property name="text">
+    <string>Salir</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
+   </property>
+  </action>
+  <action name="actionAcercaDe">
+   <property name="text">
+    <string>Acerca de</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
