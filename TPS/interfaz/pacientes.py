@@ -17,7 +17,7 @@ import shutil
 import subprocess
 import time
 
-from main import config as cfg
+import config as cfg
 
 URL_BASE = os.environ.get("PSIB_URL_BASE", "https://s3.amazonaws.com/openneuro.org/ds004388")
 EXTENSIONES = ("eeg.set", "eeg.fdt", "eeg.json", "channels.tsv", "events.tsv", "events.json")
