@@ -1,4 +1,5 @@
 # comparar_referencias.py
+# Script de VERIFICACIÓN (no lo usa main.py): justifica una decisión de diseño.
 # Compara distintas referencias para justificar la elección del montaje (CP4-Fz).
 #
 # El EEG está referido a la mastoides derecha (RM). Cada canal es V_canal - V_ref,
@@ -15,13 +16,18 @@
 # pico. El registro se carga una vez con todos los canales necesarios; solo se
 # repite la re-referencia, la interpolación y el filtrado.
 #
-# Ejecutar desde la raíz del repo:   python TPS/comparar_referencias.py
+# Ejecutar desde la raíz del repo:   python TPS/pruebas/comparar_referencias.py
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "main"))   # módulos del pipeline
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 import config as cfg
-from filtrado import (MASTOIDES_ENLAZADAS, PROMEDIO, _disenar_filtros, _filtrar,
+from filtrado import (MASTOIDES_ENLAZADAS, PROMEDIO, disenar_filtros, filtrar,
                       canales_de_referencia, cargar_eeg, interpolar_artefacto,
                       nombre_referencia, referenciar, senal_referencia_promedio,
                       seleccionar_canales)
@@ -46,7 +52,7 @@ def epocas_por_referencia(referencias, canales, f_bajo=None):
     fs, nombres, datos_rm = raw.info["sfreq"], raw.ch_names, raw.get_data()
     eventos = cargar_eventos(cfg.ARCHIVO_EVENTOS)
     muestras = eventos["sample"].to_numpy().astype(int)
-    filtros = _disenar_filtros(fs, f_bajo, cfg.F_ALTO, cfg.ORDEN, cfg.F_NOTCH, cfg.Q_NOTCH)
+    filtros = disenar_filtros(fs, f_bajo, cfg.F_ALTO, cfg.ORDEN, cfg.F_NOTCH, cfg.Q_NOTCH)
     padlen = min(int(3 * fs / f_bajo), datos_rm.shape[1] - 1)
     salida = {}
     for ref in referencias:
@@ -56,7 +62,7 @@ def epocas_por_referencia(referencias, canales, f_bajo=None):
             datos = referenciar(datos_rm, nombres, canales, ref)
         if cfg.INTERPOLAR_ARTEFACTO:
             datos = interpolar_artefacto(datos, muestras, fs, *cfg.T_ARTEFACTO)
-        salida[nombre_referencia(ref)] = segmentar_epocas(_filtrar(datos, filtros, padlen), eventos,
+        salida[nombre_referencia(ref)] = segmentar_epocas(filtrar(datos, filtros, padlen), eventos,
                                                           sfreq=fs, tmin=cfg.TMIN, tmax=cfg.TMAX)
     return salida
 

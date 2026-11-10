@@ -1,5 +1,6 @@
 # config.py
-# Parámetros del pipeline de PES del nervio MEDIANO (sub-001, ds004388).
+# Parámetros del pipeline de PES del nervio mediano (dataset ds004388). Todos los
+# scripts leen de acá: para analizar otro sujeto alcanza con cambiar SUJETO y RUN.
 #
 # Objetivo del trabajo: cuantificar cómo mejora la relación señal/ruido (SNR) del
 # potencial evocado según el tipo de promediado (homogéneo e inhomogéneo "n", "s",
@@ -12,19 +13,21 @@
 from pathlib import Path
 
 # ---- Rutas ----
-RAIZ = Path(__file__).resolve().parent.parent      # raíz del repo (config.py está en TPS/)
-DIR_RESULTADOS = RAIZ / "results"                  # CSV y figuras exploratorias (fuera de git)
-DIR_FIGURAS = RAIZ / "informe" / "figuras"         # figuras finales del informe (graficos.py)
+RAIZ = Path(__file__).resolve().parents[2]         # raíz del repo (este archivo está en TPS/main/)
+DIR_RESULTADOS = RAIZ / "results"                  # CSV de cada sujeto (fuera de git)
+DIR_FIGURAS = RAIZ / "informe" / "figuras"         # figuras finales del informe
 
 # ---- Registro ----
-# [P] Experimento 1: mediano izquierdo en la muñeca, pulso de 0,2 ms apenas por encima
-# del umbral motor, intervalo entre estímulos 763 ± 50 ms (~1,3 Hz), 4 bloques de 500
-# estímulos por nervio. Se analiza el primer bloque del mediano de sub-001 (run-03).
-# [IFCN] 500 barridos alcanzan para los componentes corticales tempranos.
-SUJETO = "004"
-RUN = "02"
-DIR_DATOS = RAIZ / f"EEG-Paciente{int(SUJETO)}" # datos, fuera de git
-
+# [P] Experimento 1: estimulación eléctrica del mediano izquierdo en la muñeca, pulso
+# de 0,2 ms apenas por encima del umbral motor, intervalo entre estímulos 763 ± 50 ms
+# (~1,3 Hz), bloques de 500 estímulos. Se analiza el PRIMER bloque del mediano de
+# cada sujeto. [IFCN] 500 barridos alcanzan para los componentes corticales tempranos.
+# Primer run del mediano de los sujetos analizados (el orden de las tareas está
+# contrabalanceado entre sujetos):
+#   run-03: sub-001, 002, 005, 007, 009, 010    run-02: sub-003, 004, 006, 008
+SUJETO = "001"
+RUN = "03"
+DIR_DATOS = RAIZ / f"EEG-Paciente{int(SUJETO)}"    # datos del sujeto (fuera de git)
 BASE = f"sub-{SUJETO}_task-median_run-{RUN}"       # prefijo BIDS del run
 ARCHIVO_EEG = DIR_DATOS / f"{BASE}_eeg.set"        # el .fdt debe estar al lado
 ARCHIVO_EVENTOS = DIR_DATOS / f"{BASE}_events.tsv"
@@ -44,7 +47,8 @@ CANALES_LATERALIDAD = ["CP3", "CP4"]
 # mastoides derecha (RM) y Fz se agregó a propósito para poder re-referenciar.
 # La lateralidad se evalúa con una referencia simétrica (mastoides enlazadas), porque
 # con Fz el P20 frontal invertido aparece en ambos hemisferios (falso "N20" en CP3).
-# Opciones: "RM", "Fz", "FPz", lista de canales, "mastoides_enlazadas", "promedio".
+# Opciones: "RM", "Fz" (o cualquier canal), lista de canales, "mastoides_enlazadas",
+# "promedio" (ver filtrado.py).
 REFERENCIA = "Fz"
 REFERENCIA_LATERALIDAD = "mastoides_enlazadas"
 

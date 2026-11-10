@@ -1,4 +1,5 @@
 # comparar_filtros.py
+# Script de VERIFICACIÓN (no lo usa main.py): justifica una decisión de diseño.
 # Compara bandas de filtrado para justificar la elegida (config.F_BAJO-F_ALTO).
 #
 # Bandas comparadas (todas Butterworth de orden 4, fase cero, + notch de 50 Hz):
@@ -18,13 +19,18 @@
 #   - la SNR estilo paper (RMS ±1 ms alrededor del N20 / RMS pre-estímulo).
 #
 # El registro se carga, re-referencia e interpola una sola vez; solo se repite el filtrado.
-# Ejecutar desde la raíz del repo:   python TPS/comparar_filtros.py
+# Ejecutar desde la raíz del repo:   python TPS/pruebas/comparar_filtros.py
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "main"))   # módulos del pipeline
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 import config as cfg
-from filtrado import _disenar_filtros, _filtrar, cargar_y_referenciar, interpolar_artefacto
+from filtrado import disenar_filtros, filtrar, cargar_y_referenciar, interpolar_artefacto
 from promedio import promedio_homogeneo, promedio_inhomogeneo
 from segmentacion import cargar_eventos, segmentar_epocas
 from snr import calcular_snr, pesos_homogeneos, snr_paper
@@ -47,9 +53,9 @@ def cargar_interpolado():
 
 def analizar_banda(datos, fs, eventos, f_bajo, f_alto):
     """PEP y métricas con una banda. Devuelve (t, pe, fila de la tabla)."""
-    filtros = _disenar_filtros(fs, f_bajo, f_alto, cfg.ORDEN, cfg.F_NOTCH, cfg.Q_NOTCH)
+    filtros = disenar_filtros(fs, f_bajo, f_alto, cfg.ORDEN, cfg.F_NOTCH, cfg.Q_NOTCH)
     padlen = min(int(3 * fs / f_bajo), datos.shape[1] - 1)
-    epocas, t = segmentar_epocas(_filtrar(datos, filtros, padlen), eventos, sfreq=fs,
+    epocas, t = segmentar_epocas(filtrar(datos, filtros, padlen), eventos, sfreq=fs,
                                  tmin=cfg.TMIN, tmax=cfg.TMAX)
     pe = promedio_homogeneo(epocas)
     snr_h = calcular_snr(epocas, pe, pesos_homogeneos(epocas), t, cfg.VENTANA_SENAL)

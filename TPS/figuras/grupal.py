@@ -7,14 +7,18 @@
 #     no supone normalidad con N chico);
 #   - curvas SNR vs. N de todos los sujetos y su pendiente (teórica: 10 dB/década);
 #   - latencia del N20 de cada sujeto frente al paper (Nierula et al. 2024) y la IFCN.
-# No recalcula nada del pipeline: solo lee resultados. Antes hay que correr main.py con
-# cada sujeto (config.SUJETO / config.RUN).
+# No recalcula nada del pipeline: solo lee resultados. Antes hay que correr
+# TPS/main/main.py con cada sujeto (config.SUJETO / config.RUN).
 #
 # Salidas en informe/figuras/: 11_grupal_ganancia, 12_grupal_curvas, 13_grupal_n20
 # (PNG + PDF), grupal_sujetos.csv y grupal_resumen.csv.
 #
-# Ejecutar desde la raíz del repo:   python TPS/grupal.py
+# Ejecutar desde la raíz del repo:   python TPS/figuras/grupal.py
 import re
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "main"))   # módulos del pipeline
 
 import matplotlib.pyplot as plt
 import numpy as np

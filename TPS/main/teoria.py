@@ -1,6 +1,7 @@
 # teoria.py
-# Etapa 7: latencias y amplitudes del PES del nervio MEDIANO, medidas automáticamente
-# y comparadas con valores de referencia.
+# Etapa 6 del pipeline: latencias y amplitudes del PES del nervio mediano, medidas
+# automáticamente y comparadas con la guía IFCN y con el paper del dataset. También
+# el control de calidad de la IFCN (reproducibilidad entre dos subpromedios).
 #
 # Componentes (canal CP4, contralateral al brazo izquierdo estimulado ≈ Pc de la IFCN):
 #   N20: primer componente cortical (área 3b, giro poscentral).
@@ -127,6 +128,7 @@ def tabla_metodos(t, pes, canales):
     df = pd.concat(partes)
     return df.pivot_table(index=["canal", "componente"], columns="metodo",
                           values=["lat_ms", "amp_uV"], sort=False).round(2)
+
 
 def reproducibilidad(t, epocas, canales, modo="mitades"):
     """Control de calidad de la IFCN: las respuestas deben replicarse. Se divide el

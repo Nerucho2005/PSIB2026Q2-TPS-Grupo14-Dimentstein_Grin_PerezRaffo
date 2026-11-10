@@ -1,5 +1,5 @@
 # promedio.py
-# Etapas 3 y 4: promedio homogéneo e inhomogéneo de las épocas.
+# Etapa 4 del pipeline: promedio homogéneo e inhomogéneo de las épocas.
 #
 # Modelo de cada época m (por canal):  x_m(n) = a_m * s(n) + v_m(n)
 #   s(n): PEP (igual en todas las épocas), a_m: amplitud de la época m,
@@ -13,13 +13,15 @@
 #   modo "sn": ambos varían             -> w_m ∝ a_m/sigma_m^2
 #
 # Cómo se estiman a_m y sigma_m^2:
-#   sigma_m^2: varianza del residuo x_m - a_m * s_hat en TODA la época. Con el
-#     pre-estímulo solo (20 ms) habría ~4 grados de libertad tras el pasabanda,
+#   sigma_m^2: varianza del residuo x_m - a_m * s_hat en TODA la época (110 ms).
+#     Con el pre-estímulo solo habría pocos grados de libertad tras el pasabanda,
 #     y 1/sigma^2 premiaría épocas tranquilas por casualidad.
 #   a_m: en una época sola el PEP está enterrado en el EEG y a_m sale casi puro
 #     ruido (pesos negativos). Se estima por BLOQUES de épocas consecutivas: el
 #     promedio del bloque tiene SNR suficiente, y la amplitud del PEP cambia
 #     lento (habituación, fatiga). Todas las épocas de un bloque comparten a.
+#   Una época muy ruidosa (sigma_m^2 grande) recibe poco peso en "n" y "sn"; una
+#   época con PEP más chico recibe poco peso en "s" y "sn".
 #
 # Entradas (salida de segmentar_epocas):
 #   epocas  (n_epocas, n_canales, n_muestras), en V, en orden temporal
@@ -82,7 +84,7 @@ def pesos_inhomogeneos(a, sigma2):
     return num / (a * num).sum(axis=0, keepdims=True)
 
 
-def promedio_inhomogeneo(epocas, modo, tiempos, ventana_senal=(0.015, 0.030), tam_bloque=50):
+def promedio_inhomogeneo(epocas, modo, tiempos, ventana_senal, tam_bloque=50):
     """Promedio pesado. modo: "s", "n" o "sn".
     ventana_senal: dónde está el PEP (s), para estimar amplitudes.
     tam_bloque: épocas por bloque para estimar amplitudes.

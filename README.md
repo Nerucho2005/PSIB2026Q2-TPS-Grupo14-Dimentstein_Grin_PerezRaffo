@@ -22,7 +22,7 @@ Las decisiones de diseño previas son el filtrado, el canal, la referencia y el 
 - **El estudio:**
   - Es un trabajo **metodológico**: valida el registro no invasivo de la médula espinal (ESG multicanal más filtrado espacial por CCA), junto con el nervio periférico y la corteza.
   - Participaron 42 voluntarios **sanos** y diestros; se analizaron 36.
-  - Hubo estimulación eléctrica del **mediano izquierdo** (muñeca) y del tibial izquierdo, con pulsos de 0,2 ms apenas por encima del umbral motor.
+  - Hubo estimulación eléctrica del **mediano izquierdo** en la muñeca, con pulsos de 0,2 ms apenas por encima del umbral motor (el dataset también tiene bloques de estimulación tibial, que no se usan en este trabajo).
   - El intervalo entre estímulos fue de 763 ± 50 ms (≈ 1,3 Hz), en 4 bloques de 500 estímulos por nervio, alternados entre nervios y contrabalanceados.
 - **Registro:**
   - EEG de 64 canales a 10 kHz, contra la **mastoides derecha (RM)**; Fz se agregó para poder re-referenciar.
@@ -67,22 +67,25 @@ Las decisiones de diseño previas son el filtrado, el canal, la referencia y el 
 
 ```
 PSIB2026Q2-TPS-Grupo14-Dimentstein_Grin_PerezRaffo/
-├── EEG-Paciente1/             # datos .set/.fdt/.tsv/.json (FUERA de git)
+├── EEG-Paciente1/ … EEG-Paciente10/   # datos .set/.fdt/.tsv/.json de cada sujeto (FUERA de git)
 ├── TPS/
-│   ├── config.py              # parámetros (todas las decisiones de diseño, con su bibliografía)
-│   ├── filtrado.py            # carga, re-referencia, interpolación del artefacto, filtrado
-│   ├── segmentacion.py        # eventos y épocas
-│   ├── promedio.py            # promedio homogéneo e inhomogéneo (n, s, sn)
-│   ├── snr.py                 # SNR par/impar, jackknife, curva SNR vs. N, SNR del paper
-│   ├── teoria.py              # componentes del mediano vs. IFCN y paper; reproducibilidad
-│   ├── main.py                # pipeline completo, tablas en results/
-│   ├── chequeo_artefacto.py   # verificación: artefacto e interpolación
-│   ├── comparar_filtros.py    # verificación: bandas IFCN / anterior / paper
-│   ├── comparar_referencias.py# verificación: RM, Fz, mastoides enlazadas, promedio
-│   ├── graficos.py            # 10 figuras finales (sub-001) + CSV en informe/figuras/
-│   └── grupal.py              # análisis de los 10 sujetos: figuras 11-13 + CSV
-├── results/                   # salidas de los scripts (FUERA de git)
-├── informe/figuras/           # figuras finales (graficos.py)
+│   ├── main/                   # PIPELINE: lo que necesita main.py
+│   │   ├── config.py           # parámetros (decisiones de diseño con su bibliografía; SUJETO y RUN)
+│   │   ├── filtrado.py         # etapas 1-2: carga, re-referencia, artefacto, filtrado
+│   │   ├── segmentacion.py     # etapa 3: eventos y épocas
+│   │   ├── promedio.py         # etapa 4: promedio homogéneo e inhomogéneo (n, s, sn)
+│   │   ├── snr.py              # etapa 5: SNR par/impar, jackknife, curva SNR vs. N, SNR del paper
+│   │   ├── teoria.py           # etapa 6: componentes vs. IFCN y paper; reproducibilidad
+│   │   └── main.py             # corre las 6 etapas para un sujeto, tablas en results/
+│   ├── pruebas/                # VERIFICACIÓN de las decisiones de diseño (no las usa main.py)
+│   │   ├── chequeo_artefacto.py    # artefacto de estímulo e interpolación
+│   │   ├── comparar_filtros.py     # bandas IFCN / anterior / paper
+│   │   └── comparar_referencias.py # RM, Fz, mastoides enlazadas, promedio
+│   └── figuras/                # FIGURAS DEL INFORME
+│       ├── graficos.py         # figuras 01-10 (sub-001) + CSV
+│       └── grupal.py           # figuras 11-13: análisis de los 10 sujetos (lee results/)
+├── results/                    # CSV de cada sujeto (FUERA de git)
+├── informe/figuras/            # figuras finales (PNG + PDF) y tablas
 ├── requirements.txt
 └── README.md
 ```
@@ -92,12 +95,12 @@ PSIB2026Q2-TPS-Grupo14-Dimentstein_Grin_PerezRaffo/
 Desde la raíz del repo, en CMD:
 
 ```
-python TPS/main.py                  # pipeline completo: SNR, diferencias, curvas, componentes
-python TPS/comparar_filtros.py      # justificación de la banda
-python TPS/comparar_referencias.py  # justificación de la referencia
-python TPS/chequeo_artefacto.py     # justificación de la interpolación
-python TPS/grupal.py                # análisis grupal (lee results/; antes correr main.py con cada sujeto)
-python TPS/graficos.py              # figuras del informe (agregar --sin-promedio para omitir la ref. promedio, la más lenta)
+python TPS/main/main.py                     # pipeline de un sujeto (SUJETO y RUN en config.py)
+python TPS/pruebas/chequeo_artefacto.py     # justificación de la interpolación
+python TPS/pruebas/comparar_filtros.py      # justificación de la banda
+python TPS/pruebas/comparar_referencias.py  # justificación de la referencia
+python TPS/figuras/graficos.py              # figuras 01-10 (agregar --sin-promedio para omitir la ref. promedio, la más lenta)
+python TPS/figuras/grupal.py                # figuras 11-13 (antes correr main.py con cada sujeto)
 ```
 
 ## 6. Pipeline y módulos
@@ -228,3 +231,7 @@ Validación con datos sintéticos (PEP conocido, ruido con tramos de varianza al
    - **resultados**: figuras 06–09;
    - **discusión**: comparación con el paper (solo latencias, porque el paper usa CCA sobre 64 canales y amplitudes en unidades arbitrarias), las dos métricas de SNR y la IFCN.
 3. Opcional: extender la curva SNR vs. N con los otros runs del mediano (05, 07 y 09) para llegar a ~2000 épocas.
+
+## Nota sobre los imports
+
+Los scripts de `pruebas/` y `figuras/` agregan `TPS/main` al `sys.path` en sus primeras líneas, para poder importar los módulos del pipeline con `import config`, `from filtrado import ...`, etc. No hay que convertir esos imports a la forma `TPS.main.config`: VS Code a veces lo propone, y rompe la ejecución desde la raíz del repo. Si Pylance marca los imports como no resueltos, se puede agregar `"python.analysis.extraPaths": ["TPS/main", "TPS/pruebas"]` a la configuración de VS Code; es solo cosmético.

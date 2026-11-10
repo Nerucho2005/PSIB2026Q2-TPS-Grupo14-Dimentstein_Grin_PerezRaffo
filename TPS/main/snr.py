@@ -1,5 +1,6 @@
 # snr.py
-# Etapa 6: relación señal/ruido (SNR) de cada promedio.
+# Etapa 5 del pipeline: relación señal/ruido (SNR) de cada promedio y su
+# dependencia con la cantidad de épocas promediadas (N).
 #
 # Problema: el PEP verdadero s(n) es desconocido, así que no se puede medir el
 # ruido residual del promedio como pe - s. Se estima con el promedio alternado
@@ -28,7 +29,7 @@
 # fuerza media cero en el pre-estímulo y vuelve el ruido no estacionario dentro
 # de la época, así que medir P_ruido en toda la época lo subestima (~0,5 dB).
 #
-# Para reducir la varianza de P_ruido (la ventana dura 65 ms y, tras el
+# Para reducir la varianza de P_ruido (la ventana dura 15 ms y, tras el
 # pasabanda, tiene pocos grados de libertad), se promedian n_perm patrones de
 # signo: cada par de épocas consecutivas recibe signos opuestos, con orden
 # aleatorio dentro del par. Todos cancelan el PEP y dan realizaciones distintas
@@ -51,12 +52,14 @@
 #   - ajustar_pendiente: pendiente de SNR vs. log10(N) (teórica: 10 dB/década).
 # Para los modos "s" y "sn", promedio.py exige >= 2 bloques de amplitud, así que con
 # N chico se reduce tam_bloque a N // 2 (ver _promediar). Aclararlo en el informe.
+import warnings
+
 import numpy as np
 
 from promedio import promedio_homogeneo, promedio_inhomogeneo
 
 METODOS = ("homogeneo", "n", "s", "sn")
-VENTANA_SENAL = (0.015, 0.030)  # s; desde main.py se pasa la de config.py
+VENTANA_SENAL = (0.015, 0.030)  # s; valor por defecto, desde los scripts se pasa el de config.py
 
 
 def _mascara(tiempos, ventana):
@@ -119,8 +122,8 @@ def _promediar(epocas, metodo, tiempos, ventana_senal, tam_bloque):
     except ValueError:
         pass
     # promedio.amplitudes falla si CUALQUIER canal no tiene un PEP estimable (p. ej. el
-    # canal ipsilateral del mediano): se reintenta canal por canal y se deja NaN solo
-    # en los que fallan, para no perder los demás.
+    # canal ipsilateral CP3): se reintenta canal por canal y se deja NaN solo en los
+    # que fallan, para no perder los demás.
     M, C, N = epocas.shape
     pe, pesos = np.full((C, N), np.nan), np.full((M, C), np.nan)
     algun_ok = False
@@ -179,7 +182,6 @@ def _jackknife(replicas, estimado):
     """Error estándar jackknife a partir de las k réplicas leave-one-out (axis 0)."""
     k = replicas.shape[0]
     validas = np.isfinite(replicas).all(axis=0) & np.isfinite(estimado)
-    import warnings
     with np.errstate(invalid="ignore"), warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)      # canales sin réplicas válidas
         media = np.nanmean(replicas, axis=0)
@@ -371,10 +373,3 @@ def curva_snr_paper(epocas, tiempos, n_valores, lat, semiancho=0.001, n_bloques_
                              for j in range(n_bloques_jk)])
         se[i] = _jackknife(reps, snr[i])
     return dict(n=n_valores, snr_db=snr, se_db=se)
-
-
-def snr_teorica_homogeneo(n_valores, snr_ref_db, n_ref):
-    # Se conserva por compatibilidad; usar snr_teorica_ajustada.
-    """Recta de referencia: con ruido blanco y estacionario, la SNR del promedio
-    homogéneo crece 10 log10(N) (+3 dB por cada duplicación de N)."""
-    return snr_ref_db + 10 * np.log10(np.asarray(n_valores) / n_ref)

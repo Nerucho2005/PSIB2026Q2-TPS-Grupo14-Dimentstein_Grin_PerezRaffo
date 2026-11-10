@@ -5,8 +5,9 @@
 #      coma decimal en los ejes, guardado en PNG (300 dpi) y PDF en informe/figuras/.
 #   2. Una función por figura (fig_*): reciben datos YA calculados y devuelven la
 #      figura. No leen archivos ni calculan nada del pipeline.
-#   3. Orquestador (generar_todas): carga el registro con las funciones del pipeline,
-#      calcula todo una sola vez y llama a las fig_*.
+#   3. Orquestador (generar_todas): carga el registro con las funciones del pipeline
+#      (TPS/main) y de los scripts de verificación (TPS/pruebas), calcula todo una sola
+#      vez y llama a las fig_*. Usa el sujeto de config.py (sub-001 en el informe).
 #
 # Figuras, ordenadas según el informe:
 #   Decisiones de diseño:  01 PSD crudo vs. filtrado | 02 artefacto e interpolación |
@@ -17,9 +18,13 @@
 #                          (IC 95 %) | 09 varianza del ruido y pesos por época
 #   Control de calidad:    10 reproducibilidad (primera vs. segunda mitad)
 #
-# Ejecutar desde la raíz del repo:   python TPS/graficos.py
+# Ejecutar desde la raíz del repo:   python TPS/figuras/graficos.py
 # (tarda varios minutos; con --sin-promedio se omite la referencia promedio, la más lenta)
 import sys
+from pathlib import Path
+
+_TPS = Path(__file__).resolve().parents[1]
+sys.path[:0] = [str(_TPS / "main"), str(_TPS / "pruebas")]   # pipeline y scripts de pruebas
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -364,7 +369,7 @@ def calcular(incluir_promedio=True):
     from chequeo_artefacto import N_EPOCAS_GRAFICO, T_BASE, epocar, restar_base
     from comparar_filtros import BANDAS, analizar_banda
     from comparar_referencias import REFERENCIAS, epocas_por_referencia, resumen_referencia
-    from filtrado import (MASTOIDES_ENLAZADAS, PROMEDIO, _disenar_filtros, _filtrar,
+    from filtrado import (MASTOIDES_ENLAZADAS, PROMEDIO, disenar_filtros, filtrar,
                           cargar_y_referenciar, interpolar_artefacto, nombre_referencia)
     from promedio import varianza_ruido
     from segmentacion import cargar_eventos
@@ -381,16 +386,16 @@ def calcular(incluir_promedio=True):
     raw = cargar_y_referenciar(cfg.ARCHIVO_EEG, cfg.CANALES, cfg.REFERENCIA)
     fs, x_sin = raw.info["sfreq"], raw.get_data()
     x_int = interpolar_artefacto(x_sin, muestras, fs, *cfg.T_ARTEFACTO)
-    filtros = _disenar_filtros(fs, cfg.F_BAJO, cfg.F_ALTO, cfg.ORDEN, cfg.F_NOTCH, cfg.Q_NOTCH)
+    filtros = disenar_filtros(fs, cfg.F_BAJO, cfg.F_ALTO, cfg.ORDEN, cfg.F_NOTCH, cfg.Q_NOTCH)
     padlen = min(int(3 * fs / cfg.F_BAJO), x_sin.shape[1] - 1)
-    x_fil = _filtrar(x_int, filtros, padlen)
+    x_fil = filtrar(x_int, filtros, padlen)
     f, psd_c = welch(x_int[0], fs=fs, nperseg=int(fs))
     _, psd_f = welch(x_fil[0], fs=fs, nperseg=int(fs))
     R["psd"] = dict(f=f, psd_crudo=psd_c, psd_filtrado=psd_f)
 
     print("Artefacto de estímulo")
     ep_c, t = epocar(x_sin, muestras, fs, cfg.TMIN, cfg.TMAX)
-    ep_f, _ = epocar(_filtrar(x_sin, filtros, padlen), muestras, fs, cfg.TMIN, cfg.TMAX)
+    ep_f, _ = epocar(filtrar(x_sin, filtros, padlen), muestras, fs, cfg.TMIN, cfg.TMAX)
     ep_i, _ = epocar(x_fil, muestras, fs, cfg.TMIN, cfg.TMAX)
     ep_c = restar_base(ep_c, t, T_BASE)
     sel = np.linspace(0, ep_c.shape[0] - 1, N_EPOCAS_GRAFICO).astype(int)

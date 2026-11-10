@@ -1,4 +1,5 @@
 # chequeo_artefacto.py
+# Script de VERIFICACIÓN (no lo usa main.py): justifica una decisión de diseño.
 # Verifica el artefacto de estimulación en el EEG SIN filtrar.
 #
 # El pulso del estimulador (0,2 ms) llega al cuero cabelludo por conducción de
@@ -10,12 +11,17 @@
 #      artefacto, para ver cuánto lo dispersa el filtro de fase cero y si la
 #      interpolación lo resuelve.
 #
-# Ejecutar desde la raíz del repo:   python TPS/chequeo_artefacto.py
+# Ejecutar desde la raíz del repo:   python TPS/pruebas/chequeo_artefacto.py
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "main"))   # módulos del pipeline
+
 import matplotlib.pyplot as plt
 import numpy as np
 
 import config as cfg
-from filtrado import _disenar_filtros, _filtrar, cargar_y_referenciar, interpolar_artefacto
+from filtrado import disenar_filtros, filtrar, cargar_y_referenciar, interpolar_artefacto
 from segmentacion import cargar_eventos
 
 T_BASE = (-0.010, -0.001)   # s, línea de base para el promedio crudo
@@ -50,7 +56,7 @@ def main():
     fs = raw.info["sfreq"]
     crudo = raw.get_data()
 
-    filtros = _disenar_filtros(fs, cfg.F_BAJO, cfg.F_ALTO, cfg.ORDEN, cfg.F_NOTCH, cfg.Q_NOTCH)
+    filtros = disenar_filtros(fs, cfg.F_BAJO, cfg.F_ALTO, cfg.ORDEN, cfg.F_NOTCH, cfg.Q_NOTCH)
     padlen = min(int(3 * fs / cfg.F_BAJO), crudo.shape[1] - 1)
 
     eventos = cargar_eventos(cfg.ARCHIVO_EVENTOS)
@@ -59,8 +65,8 @@ def main():
     else:
         muestras = np.round(eventos["onset"].to_numpy() * fs).astype(int)
 
-    filtrado = _filtrar(crudo, filtros, padlen)
-    filtrado_int = _filtrar(interpolar_artefacto(crudo, muestras, fs, *cfg.T_ARTEFACTO),
+    filtrado = filtrar(crudo, filtros, padlen)
+    filtrado_int = filtrar(interpolar_artefacto(crudo, muestras, fs, *cfg.T_ARTEFACTO),
                             filtros, padlen)
 
     ep_c, t = epocar(crudo, muestras, fs, cfg.TMIN, cfg.TMAX)
